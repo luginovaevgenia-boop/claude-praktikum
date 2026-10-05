@@ -27,7 +27,7 @@
     font: 400 18px/1.6 var(--body);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 640px; margin: 0 auto; padding-inline: 20px; }
+  .wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; }
   @media (max-width: 380px) { .wrap { padding-inline: 16px; } }
 
   h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
@@ -52,7 +52,7 @@
   .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .fact {
     display: grid; gap: 4px; align-content: start;
-    padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px;
     font-size: 17px; font-weight: 500; line-height: 1.35;
   }
   .fact.wide { grid-column: 1 / -1; }
@@ -72,7 +72,7 @@
   /* Окно запроса */
   .prompt {
     background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
-    padding: 20px; display: grid; gap: 16px; min-width: 0;
+    padding: 16px; display: grid; gap: 16px; min-width: 0;
   }
   .prompt-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--muted); }
   .dots { display: flex; gap: 6px; }
@@ -84,7 +84,7 @@
   }
   .formula em { font-style: normal; color: var(--muted); font-size: 15px; align-self: center; }
   .msg {
-    background: var(--surface-2); border-radius: 14px; padding: 18px;
+    background: var(--surface-2); border-radius: 14px; padding: 14px;
     font-size: 17px; line-height: 1.55;
   }
   .msg .k { color: var(--accent); }
@@ -112,11 +112,11 @@
   .items { display: grid; gap: 14px; }
   .item {
     background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
-    padding: 22px 20px; display: grid; gap: 12px; align-content: start;
+    padding: 20px 16px; display: grid; gap: 12px; align-content: start;
   }
   .item p { font-size: 18px; color: var(--muted); }
   .item ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 18px; }
-  .item li { padding-left: 24px; position: relative; color: var(--muted); }
+  .item li { padding-left: 20px; position: relative; color: var(--muted); }
   .item li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
   .item li b { color: var(--fg); font-weight: 500; }
   .item.live { background: var(--accent-soft); border-color: rgba(255,138,91,.45); }
@@ -131,11 +131,11 @@
 
   .two { display: grid; gap: 28px; }
   .who { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .who li { padding: 16px 18px; border: 1px solid var(--line); border-radius: 14px; font-size: 18px; }
+  .who li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; font-size: 18px; }
 
   /* Цена */
   .price-grid { display: grid; gap: 14px; }
-  .tier { border: 1px solid var(--line); border-radius: 20px; padding: 26px 22px; display: grid; gap: 10px; align-content: start; }
+  .tier { border: 1px solid var(--line); border-radius: 20px; padding: 24px 18px; display: grid; gap: 10px; align-content: start; }
   .tier.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   .tier .label { font: 600 14px/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; }
   .tier .sum { font: 800 44px/1.05 var(--display); font-variant-numeric: tabular-nums; }
@@ -372,18 +372,13 @@
     <div class="wrap">
       <div class="sec-head">
         <p class="eyebrow">Стоимость</p>
-        <h2>Запишитесь заранее — так выгоднее</h2>
+        <h2>Участие в практикуме</h2>
       </div>
       <div class="price-grid">
         <div class="tier main">
-          <span class="label">Ранняя запись</span>
-          <span class="sum"><span class="old">4 500 ₽</span><br>3 000 ₽</span>
-          <span>при записи до 7 октября</span>
-        </div>
-        <div class="tier">
-          <span class="label muted">Обычная цена</span>
-          <span class="sum">4 500 ₽</span>
-          <span class="muted">с 8 октября</span>
+          <span class="label">Практикум целиком</span>
+          <span class="sum">5 000 ₽</span>
+          <span>Около 3,5 часов практики, памятка с шаблонами и неделя поддержки в чате</span>
         </div>
       </div>
       <div class="signup">
