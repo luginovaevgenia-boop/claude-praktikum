@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Демография Якутии — видео</title>
+<style>
+  html, body { margin: 0; background: #111; }
+  canvas { display: block; width: 100vw; height: auto; max-width: 1920px; margin: 0 auto; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+/* =====================================================================
+   ДАННЫЕ И ТЕКСТЫ — правьте здесь
+   ===================================================================== */
+const DATA = {
+  population2025: 1006561,     // на 1 января 2025, Росстат
+  population2024: 1001664,     // на 1 января 2024, Росстат
+  area: '3,08 млн км²',
+  density: '0,33 чел./км²',
+  urban: '66,4 %',
+  // Переписи и оценка на 2025
+  history: [
+    [1959, 487343], [1970, 664123], [1979, 838808], [1989, 1081408],
+    [2002, 949280], [2010, 958528], [2021, 995686], [2025, 1006561],
+  ],
+  births2024: 10778, deaths2024: 8243, birthRate2024: '10,7', dfoBirthRate: '9,3',
+  years: [2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023],
+  birthRate: [17.8, 17.1, 16.0, 14.5, 13.7, 13.2, 13.3, 12.3, 11.8, 11.2],
+  deathRate: [8.6, 8.5, 8.4, 8.1, 7.8, 7.8, 9.2, 10.6, 8.3, 7.8],
+  tfr:       [2.216, 2.152, 2.046, 1.880, 1.801, 1.762, 1.794, 1.659, 1.618, 1.548],
+  lifeExp:   [69.81, 70.29, 70.84, 71.68, 72.72, 73.00, 71.10, 69.98, 72.67, 73.55],
+  moveYears: [2019, 2020, 2021, 2022, 2023],
+  natural:   [5216, 4016, 1637, 3511, 3346],
+  migration: [-229, 6065, 8507, -3779, 753],
+  ethnic: [   // % от указавших национальность, перепись 2021
+    ['Якуты', 55.30, 469348], ['Русские', 32.63, 276986], ['Эвенки', 2.87, 24334],
+    ['Эвены', 1.56, 13233], ['Другие', 7.64, null],
+  ],
+  sources: [
+    'Росстат и Саха(Якутия)стат: численность населения, ВПН-2010 и ВПН-2021',
+    'Строева Г.Н. Демографическая ситуация в Республике Саха (Якутия) // Власть и управление на Востоке России, 2025, № 2',
+    'Иванова И.С., Иванова О.Н. Международный научно-исследовательский журнал, 2025, № 8: данные за 2024 г.',
+  ],
+};
+
+/* Цвета и шрифт */
+const C = {
+  bgA: '#FF9EC4', bgB: '#FFC6DC', bgC: '#7FE3D8', bgD: '#3CCFC4',
+  ink: '#2A1838', inkSoft: 'rgba(42,24,56,0.68)',
+  pink: '#E0457B', teal: '#0C9A92', violet: '#7B4FB5',
+  card: 'rgba(255,255,255,0.58)', grid: 'rgba(42,24,56,0.12)',
+};
+const FONT = 'Inter';
+const HEAD = '"Inter Display", Inter';
+
+/* Сцены: [начало, конец] в секундах */
+const SCENES = [
+  { t0: 0,  t1: 6,  draw: sceneTitle },
+  { t0: 6,  t1: 14, draw: scenePopulation },
+  { t0: 14, t1: 24, draw: sceneHistory },
+  { t0: 24, t1: 32, draw: sceneBirths },
+  { t0: 32, t1: 42, draw: sceneRates },
+  { t0: 42, t1: 52, draw: sceneTfrLife },
+  { t0: 52, t1: 61, draw: sceneMigration },
+  { t0: 61, t1: 70, draw: sceneEthnic },
+  { t0: 70, t1: 77, draw: sceneOutro },
+];
+const DURATION = 77;
+const FPS = 30;
+
+/* =====================================================================
+   ДВИЖОК
+   ===================================================================== */
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const W = 1920, H = 1080;
+
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const prog = (t, start, dur) => clamp((t - start) / dur);
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeInOut = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+const easeExpo = p => p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+const easeBack = p => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+const lerp = (a, b, p) => a + (b - a) * p;
+const fmt = (n, d = 0) => {
+  const s = (Math.abs(n) + 1e-9).toFixed(d).split('.');
+  s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return (n < 0 ? '−' : '') + s.join(',');
+};
+
+function font(size, weight = 600, head = false) {
+  ctx.font = `${weight} ${size}px ${head ? HEAD : FONT}`;
+}
+function text(str, x, y, { size = 40, weight = 600, color = C.ink, align = 'left', head = false, alpha = 1, base = 'alphabetic' } = {}) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  font(size, weight, head);
+  ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = base;
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function card(x, y, w, h, alpha = 1, r = 28) {
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.shadowColor = 'rgba(80,20,70,0.18)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 12;
+  roundRect(x, y, w, h, r); ctx.fillStyle = C.card; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+}
+/* Заголовок сцены: появляется сверху */
+function heading(lt, title, sub) {
+  const p = easeOut(prog(lt, 0.1, 0.8));
+  text(title, 120, 190 - (1 - p) * 30, { size: 64, weight: 800, head: true, alpha: p });
+  if (sub) text(sub, 122, 245 - (1 - p) * 20, { size: 28, weight: 500, color: C.inkSoft, alpha: easeOut(prog(lt, 0.35, 0.8)) });
+}
+
+/* Псевдослучайные числа с фиксированным зерном — кадры детерминированы */
+function rng(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }; }
+const R = rng(42);
+const SNOW = Array.from({ length: 70 }, () => ({ x: R() * W, y: R() * H, r: 1.5 + R() * 3.5, s: 12 + R() * 30, d: R() * 6.28 }));
+const BLOBS = [
+  { x: 0.2, y: 0.25, r: 520, c: 'rgba(255,120,180,0.35)', sp: 0.07 },
+  { x: 0.85, y: 0.8, r: 620, c: 'rgba(40,200,190,0.35)', sp: 0.05 },
+  { x: 0.7, y: 0.15, r: 420, c: 'rgba(255,255,255,0.25)', sp: 0.09 },
+];
+
+function background(t) {
+  // Амбре розовый → бирюзовый, угол медленно «дышит»
+  const a = 0.6 + Math.sin(t * 0.12) * 0.25;
+  const cx = W / 2, cy = H / 2, L = 1300;
+  const g = ctx.createLinearGradient(cx - Math.cos(a) * L, cy - Math.sin(a) * L, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
+  g.addColorStop(0, C.bgA); g.addColorStop(0.38, C.bgB); g.addColorStop(0.7, C.bgC); g.addColorStop(1, C.bgD);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for (const b of BLOBS) {
+    const x = (b.x + Math.sin(t * b.sp * 2) * 0.06) * W, y = (b.y + Math.cos(t * b.sp * 2) * 0.06) * H;
+    const rg = ctx.createRadialGradient(x, y, 0, x, y, b.r);
+    rg.addColorStop(0, b.c); rg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+  }
+  // Лёгкий снег
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  for (const s of SNOW) {
+    const y = (s.y + t * s.s) % (H + 20) - 10;
+    const x = s.x + Math.sin(t * 0.8 + s.d) * 18;
+    ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.283); ctx.fill();
+  }
+}
+
+function chrome(t) {
+  text('РЕСПУБЛИКА САХА (ЯКУТИЯ) · ДЕМОГРАФИЯ', 120, 80, { size: 20, weight: 700, color: C.inkSoft });
+  const idx = SCENES.findIndex(s => t >= s.t0 && t < s.t1);
+  text(`${String(Math.max(idx, 0) + 1).padStart(2, '0')} / ${String(SCENES.length).padStart(2, '0')}`, W - 120, 80, { size: 20, weight: 700, color: C.inkSoft, align: 'right' });
+  // Прогресс-бар
+  ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(0, H - 8, W, 8);
+  const g = ctx.createLinearGradient(0, 0, W, 0); g.addColorStop(0, C.pink); g.addColorStop(1, C.teal);
+  ctx.fillStyle = g; ctx.fillRect(0, H - 8, W * (t / DURATION), 8);
+}
+
+function render(t) {
+  ctx.clearRect(0, 0, W, H);
+  background(t);
+  for (const s of SCENES) {
+    if (t < s.t0 - 0.01 || t > s.t1 + 0.01) continue;
+    const lt = t - s.t0, len = s.t1 - s.t0;
+    const fadeIn = s.t0 === 0 ? 1 : easeOut(prog(lt, 0, 0.6));
+    const fadeOut = s.t1 >= DURATION ? 1 - prog(lt, len - 1.2, 1.2) : 1 - easeInOut(prog(lt, len - 0.6, 0.6));
+    ctx.save();
+    ctx.globalAlpha = fadeIn * fadeOut;
+    ctx.translate(0, (1 - fadeIn) * 30 - (1 - fadeOut) * 30);
+    s.draw(lt, len);
+    ctx.restore();
+  }
+  if (t > 0.3) { ctx.save(); ctx.globalAlpha = easeOut(prog(t, 0.3, 1)); chrome(t); ctx.restore(); }
+}
+
+/* =====================================================================
+   СЦЕНЫ
+   ===================================================================== */
+function sceneTitle(lt) {
+  const p1 = easeOut(prog(lt, 0.2, 1.0));
+  const p2 = easeOut(prog(lt, 0.7, 1.0));
+  const p3 = easeOut(prog(lt, 1.3, 1.0));
+  text('ДЕМОГРАФИЯ', W / 2, 400 - (1 - p1) * 40, { size: 64, weight: 600, align: 'center', color: C.pink, head: true, alpha: p1 });
+  text('Республика Саха', W / 2, 540 - (1 - p2) * 40, { size: 130, weight: 900, align: 'center', head: true, alpha: p2 });
+  text('(Якутия)', W / 2, 670 - (1 - p2) * 40, { size: 130, weight: 900, align: 'center', head: true, alpha: p2 });
+  // Линия-разделитель
+  const lw = 560 * easeInOut(prog(lt, 1.2, 1.2));
+  const g = ctx.createLinearGradient(W / 2 - 280, 0, W / 2 + 280, 0); g.addColorStop(0, C.pink); g.addColorStop(1, C.teal);
+  ctx.fillStyle = g; roundRect(W / 2 - lw / 2, 720, lw, 8, 4); ctx.fill();
+  text('Население, рождаемость, миграция · по данным Росстата', W / 2, 800, { size: 34, weight: 500, align: 'center', color: C.inkSoft, alpha: p3 });
+}
+
+function scenePopulation(lt) {
+  heading(lt, 'Сколько нас?', 'Численность постоянного населения на 1 января 2025 года');
+  const p = easeExpo(prog(lt, 0.6, 2.6));
+  const v = Math.round(DATA.population2025 * p);
+  card(120, 300, 1680, 330, easeOut(prog(lt, 0.3, 0.6)));
+  text(fmt(v), W / 2, 520, { size: 190, weight: 900, align: 'center', head: true });
+  text('человек', W / 2, 590, { size: 34, weight: 600, align: 'center', color: C.inkSoft, alpha: easeOut(prog(lt, 2.4, 0.6)) });
+  // Бейдж прироста
+  const pb = easeBack(prog(lt, 3.0, 0.7));
+  if (pb > 0) {
+    ctx.save(); ctx.translate(1560, 340); ctx.scale(pb, pb);
+    roundRect(-150, -36, 300, 72, 36); ctx.fillStyle = C.teal; ctx.fill();
+    text(`+${fmt(DATA.population2025 - DATA.population2024)} за 2024`, 0, 12, { size: 28, weight: 800, align: 'center', color: '#fff' });
+    ctx.restore();
+  }
+  const tiles = [
+    [DATA.area, 'площадь — №1 среди регионов РФ'],
+    [DATA.density, 'плотность населения'],
+    [DATA.urban, 'горожане (2022)'],
+  ];
+  tiles.forEach(([big, small], i) => {
+    const q = easeOut(prog(lt, 3.4 + i * 0.35, 0.8));
+    const x = 120 + i * 573, y = 680 + (1 - q) * 40;
+    card(x, y, 534, 220, q);
+    text(big, x + 40, y + 115, { size: 64, weight: 800, head: true, alpha: q, color: i === 1 ? C.teal : C.pink });
+    text(small, x + 40, y + 170, { size: 26, weight: 500, color: C.inkSoft, alpha: q });
+  });
+}
+
+function sceneHistory(lt) {
+  heading(lt, 'Население за 66 лет', 'Данные переписей 1959–2021 и оценка Росстата на 2025 год, тыс. человек');
+  const X0 = 200, X1 = 1720, Y0 = 900, Y1 = 380;
+  const yr0 = 1955, yr1 = 2029, vmax = 1200000;
+  const px = y => X0 + (y - yr0) / (yr1 - yr0) * (X1 - X0);
+  const py = v => Y0 - v / vmax * (Y0 - Y1);
+  const ga = easeOut(prog(lt, 0.4, 0.8));
+  // Сетка
+  ctx.save(); ctx.globalAlpha *= ga;
+  for (let v = 0; v <= 1200000; v += 300000) {
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X0, py(v)); ctx.lineTo(X1, py(v)); ctx.stroke();
+    text(fmt(v / 1000), X0 - 20, py(v) + 8, { size: 22, weight: 600, color: C.inkSoft, align: 'right' });
+  }
+  ctx.restore();
+  const pts = DATA.history.map(([y, v]) => [px(y), py(v), y, v]);
+  const draw = easeInOut(prog(lt, 1.0, 4.5));
+  // Длина ломаной для постепенной прорисовки
+  const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(d); total += d; }
+  let rem = total * draw; const path = [pts[0]];
+  for (let i = 1; i < pts.length && rem > 0; i++) {
+    const k = Math.min(1, rem / segs[i - 1]);
+    path.push([lerp(pts[i - 1][0], pts[i][0], k), lerp(pts[i - 1][1], pts[i][1], k)]);
+    rem -= segs[i - 1];
+  }
+  if (draw > 0) {
+    // Заливка под линией
+    const fg = ctx.createLinearGradient(0, Y1, 0, Y0); fg.addColorStop(0, 'rgba(224,69,123,0.35)'); fg.addColorStop(1, 'rgba(12,154,146,0.05)');
+    ctx.beginPath(); ctx.moveTo(path[0][0], Y0); path.forEach(p => ctx.lineTo(p[0], p[1])); ctx.lineTo(path[path.length - 1][0], Y0); ctx.closePath();
+    ctx.fillStyle = fg; ctx.fill();
+    const lg = ctx.createLinearGradient(X0, 0, X1, 0); lg.addColorStop(0, C.pink); lg.addColorStop(1, C.teal);
+    ctx.beginPath(); path.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+    ctx.strokeStyle = lg; ctx.lineWidth = 7; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; ctx.stroke();
+  }
+  // Точки и подписи
+  pts.forEach(([x, y, yr, v], i) => {
+    const reach = (x - X0) / (X1 - X0);
+    const startT = 1.0 + reach * 4.5;
+    const q = easeBack(prog(lt, startT, 0.5));
+    if (q <= 0) return;
+    ctx.save(); ctx.translate(x, y); ctx.scale(q, q);
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, 6.283); ctx.fillStyle = '#fff'; ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = i === 3 ? C.pink : C.teal; ctx.stroke();
+    ctx.restore();
+    const a = clamp(q);
+    text(fmt(Math.round(v / 1000)), x, y - 34, { size: 28, weight: 800, align: 'center', alpha: a });
+    text(String(yr), x, Y0 + 44, { size: 24, weight: 600, align: 'center', color: C.inkSoft, alpha: a });
+  });
+  // Аннотации
+  const a1 = easeOut(prog(lt, 4.2, 0.7));
+  if (a1 > 0) {
+    const [x, y] = pts[3];
+    card(x - 400, y - 70, 330, 110, a1, 20);
+    text('Пик — 1,08 млн', x - 376, y - 22, { size: 30, weight: 800, color: C.pink, alpha: a1 });
+    text('перепись 1989 года', x - 376, y + 16, { size: 22, weight: 500, color: C.inkSoft, alpha: a1 });
+  }
+  const a2 = easeOut(prog(lt, 5.4, 0.7));
+  if (a2 > 0) {
+    const [x, y] = pts[4];
+    card(x - 120, y + 50, 400, 110, a2, 20);
+    text('−132 тыс. к 2002 году', x - 96, y + 98, { size: 30, weight: 800, color: C.teal, alpha: a2 });
+    text('отток населения в 1990-е', x - 96, y + 136, { size: 22, weight: 500, color: C.inkSoft, alpha: a2 });
+  }
+}
+
+function sceneBirths(lt) {
+  heading(lt, '2024 год: рождений больше, чем смертей', 'Естественное движение населения за год');
+  const items = [
+    ['Родились', DATA.births2024, C.pink, ''],
+    ['Умерли', DATA.deaths2024, C.violet, ''],
+    ['Естественный прирост', DATA.births2024 - DATA.deaths2024, C.teal, '+'],
+  ];
+  items.forEach(([label, val, col, sign], i) => {
+    const q = easeOut(prog(lt, 0.5 + i * 0.4, 0.8));
+    const x = 120 + i * 573, y = 320 + (1 - q) * 40;
+    card(x, y, 534, 330, q);
+    ctx.save(); ctx.globalAlpha *= q;
+    ctx.beginPath(); ctx.arc(x + 70, y + 75, 22, 0, 6.283); ctx.fillStyle = col; ctx.fill();
+    ctx.restore();
+    text(label, x + 110, y + 86, { size: 30, weight: 700, alpha: q });
+    const v = Math.round(val * easeExpo(prog(lt, 0.8 + i * 0.4, 2.2)));
+    text(sign + fmt(v), x + 40, y + 230, { size: 110, weight: 900, head: true, color: col, alpha: q });
+    text('человек', x + 44, y + 285, { size: 26, weight: 500, color: C.inkSoft, alpha: q });
+  });
+  const q = easeOut(prog(lt, 3.2, 0.8));
+  card(120, 710, 1680, 190, q);
+  text(`${DATA.birthRate2024}‰`, 180, 830, { size: 96, weight: 900, head: true, color: C.pink, alpha: q });
+  text('коэффициент рождаемости на 1000 жителей —', 560, 800, { size: 32, weight: 600, alpha: q });
+  text(`лидер Дальнего Востока (в среднем по ДФО — ${DATA.dfoBirthRate}‰)`, 560, 850, { size: 32, weight: 600, color: C.inkSoft, alpha: q });
+}
+
+function legend(items, x, y, alpha) {
+  let xx = x;
+  items.forEach(([label, col]) => {
+    ctx.save(); ctx.globalAlpha *= alpha; roundRect(xx, y - 22, 28, 28, 7); ctx.fillStyle = col; ctx.fill(); ctx.restore();
+    text(label, xx + 42, y, { size: 26, weight: 600, alpha });
+    font(26, 600); xx += 42 + ctx.measureText(label).width + 50;
+  });
+}
+
+function sceneRates(lt) {
+  heading(lt, 'Рождаемость и смертность', 'Число родившихся и умерших на 1000 человек населения, 2014–2023');
+  legend([['Рождаемость', C.pink], ['Смертность', C.teal]], 1150, 240, easeOut(prog(lt, 0.6, 0.6)));
+  const X0 = 200, X1 = 1720, Y0 = 900, Y1 = 360, vmax = 20;
+  const n = DATA.years.length, gw = (X1 - X0) / n, bw = 46;
+  const py = v => Y0 - v / vmax * (Y0 - Y1);
+  const ga = easeOut(prog(lt, 0.4, 0.8));
+  ctx.save(); ctx.globalAlpha *= ga;
+  for (let v = 0; v <= 20; v += 5) {
+    ctx.strokeStyle = C.grid; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X0, py(v)); ctx.lineTo(X1, py(v)); ctx.stroke();
+    text(String(v), X0 - 20, py(v) + 8, { size: 22, weight: 600, color: C.inkSoft, align: 'right' });
+  }
+  ctx.restore();
+  DATA.years.forEach((yr, i) => {
+    const cx = X0 + gw * (i + 0.5);
+    const q = easeOut(prog(lt, 0.9 + i * 0.28, 1.0));
+    [[DATA.birthRate[i], C.pink, -bw - 4], [DATA.deathRate[i], C.teal, 4]].forEach(([v, col, off]) => {
+      const h = (Y0 - py(v)) * q;
+      if (h <= 0) return;
+      const g = ctx.createLinearGradient(0, Y0 - h, 0, Y0); g.addColorStop(0, col); g.addColorStop(1, col + '99');
+      ctx.fillStyle = g; roundRect(cx + off, Y0 - h, bw, h, 10); ctx.fill();
+      text(fmt(v, 1), cx + off + bw / 2, Y0 - h - 14, { size: 21, weight: 700, align: 'center', alpha: prog(lt, 1.5 + i * 0.28, 0.4) });
+    });
+    text(String(yr), cx, Y0 + 42, { size: 24, weight: 600, align: 'center', color: C.inkSoft, alpha: ga });
+  });
+  // Аннотация 2021
+  const a = easeOut(prog(lt, 5.0, 0.7));
+  if (a > 0) {
+    const cx = X0 + gw * 7.5;
+    card(cx - 60, 330, 410, 104, a, 20);
+    text('2021: пандемия COVID-19', cx - 36, 374, { size: 26, weight: 800, color: C.teal, alpha: a });
+    text('смертность выросла до 10,6‰', cx - 36, 410, { size: 22, weight: 500, color: C.inkSoft, alpha: a });
+  }
+  const b = easeOut(prog(lt, 6.2, 0.7));
+  if (b > 0) {
+    card(X0 + 420, 300, 420, 104, b, 20);
+    text('Рождаемость: −37%', X0 + 444, 344, { size: 26, weight: 800, color: C.pink, alpha: b });
+    text('с 17,8‰ до 11,2‰ за 10 лет', X0 + 444, 380, { size: 22, weight: 500, color: C.inkSoft, alpha: b });
+  }
+}
+
+function miniLine(lt, x, y, w, h, values, { min, max, color, title, sub, fmtv, badge, refLine, startT }) {
+  const q = easeOut(prog(lt, startT, 0.8));
+  card(x, y, w, h, q);
+  text(title, x + 44, y + 70, { size: 36, weight: 800, head: true, alpha: q });
+  text(sub, x + 44, y + 110, { size: 22, weight: 500, color: C.inkSoft, alpha: q });
+  const X0 = x + 70, X1 = x + w - 60, Y0 = y + h - 90, Y1 = y + 200;
+  const px = i => X0 + i / (values.length - 1) * (X1 - X0);
+  const py = v => Y0 - (v - min) / (max - min) * (Y0 - Y1);
+  if (refLine) {
+    const ra = easeOut(prog(lt, startT + 0.6, 0.6));
+    ctx.save(); ctx.globalAlpha *= ra; ctx.setLineDash([10, 10]); ctx.strokeStyle = C.inkSoft; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X0, py(refLine[0])); ctx.lineTo(X1, py(refLine[0])); ctx.stroke(); ctx.restore();
+    text(refLine[1], X1, py(refLine[0]) - 14, { size: 20, weight: 600, color: C.inkSoft, align: 'right', alpha: ra });
+  }
+  const d = easeInOut(prog(lt, startT + 0.8, 3.0)) * (values.length - 1);
+  ctx.beginPath();
+  for (let i = 0; i <= Math.floor(d); i++) i ? ctx.lineTo(px(i), py(values[i])) : ctx.moveTo(px(i), py(values[i]));
+  const fi = Math.floor(d);
+  if (fi < values.length - 1) ctx.lineTo(lerp(px(fi), px(fi + 1), d - fi), lerp(py(values[fi]), py(values[fi + 1]), d - fi));
+  ctx.strokeStyle = color; ctx.lineWidth = 7; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  if (d > 0) ctx.stroke();
+  values.forEach((v, i) => {
+    if (i > d + 0.001) return;
+    ctx.beginPath(); ctx.arc(px(i), py(v), 8, 0, 6.283); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = color; ctx.stroke();
+    if (i === 0 || i === values.length - 1 || i === 7)
+      text(fmtv(v), px(i), i === 7 ? py(v) + 48 : py(v) - 24, { size: 26, weight: 800, align: 'center', color: i === 7 ? C.inkSoft : C.ink });
+  });
+  [0, values.length - 1].forEach(i => text(String(DATA.years[i]), px(i), Y0 + 44, { size: 22, weight: 600, align: 'center', color: C.inkSoft, alpha: q }));
+  const bq = easeBack(prog(lt, startT + 3.9, 0.6));
+  if (bq > 0) {
+    ctx.save(); ctx.translate(x + w - 150, y + 82); ctx.scale(bq, bq);
+    roundRect(-100, -34, 200, 68, 34); ctx.fillStyle = color; ctx.fill();
+    text(badge, 0, 11, { size: 30, weight: 800, align: 'center', color: '#fff' });
+    ctx.restore();
+  }
+}
+
+function sceneTfrLife(lt) {
+  heading(lt, 'Меньше детей, дольше жизнь', 'Суммарный коэффициент рождаемости и ожидаемая продолжительность жизни, 2014–2023');
+  miniLine(lt, 120, 300, 820, 640, DATA.tfr, {
+    min: 1.3, max: 2.4, color: C.pink, title: 'Детей на одну женщину', sub: 'суммарный коэффициент рождаемости',
+    fmtv: v => fmt(v, 2), badge: '−30%', refLine: [2.1, 'уровень замещения поколений — 2,1'], startT: 0.4,
+  });
+  miniLine(lt, 980, 300, 820, 640, DATA.lifeExp, {
+    min: 68, max: 75, color: C.teal, title: 'Продолжительность жизни', sub: 'ожидаемая при рождении, лет',
+    fmtv: v => fmt(v, 1), badge: '+3,7 года', startT: 1.0,
+  });
+}
+
+function sceneMigration(lt) {
+  heading(lt, 'Из чего складывается рост', 'Естественный и миграционный прирост населения, человек');
+  legend([['Естественный прирост', C.pink], ['Миграционный прирост', C.teal]], 1000, 240, easeOut(prog(lt, 0.6, 0.6)));
+  const X0 = 260, X1 = 1720, Ymid = 700, scale = 0.042; // px на человека
+  const n = DATA.moveYears.length, gw = (X1 - X0) / n, bw = 90;
+  const ga = easeOut(prog(lt, 0.4, 0.8));
+  ctx.save(); ctx.globalAlpha *= ga;
+  [-4000, 0, 4000, 8000].forEach(v => {
+    ctx.strokeStyle = v === 0 ? 'rgba(42,24,56,0.45)' : C.grid; ctx.lineWidth = v === 0 ? 3 : 2;
+    ctx.beginPath(); ctx.moveTo(X0, Ymid - v * scale); ctx.lineTo(X1, Ymid - v * scale); ctx.stroke();
+    text(fmt(v), X0 - 20, Ymid - v * scale + 8, { size: 22, weight: 600, color: C.inkSoft, align: 'right' });
+  });
+  ctx.restore();
+  DATA.moveYears.forEach((yr, i) => {
+    const cx = X0 + gw * (i + 0.5);
+    const q = easeOut(prog(lt, 1.0 + i * 0.45, 1.0));
+    [[DATA.natural[i], C.pink, -bw - 6], [DATA.migration[i], C.teal, 6]].forEach(([v, col, off]) => {
+      const h = v * scale * q;
+      const top = h >= 0 ? Ymid - h : Ymid, hh = Math.abs(h);
+      if (hh < 0.5) return;
+      ctx.fillStyle = col; roundRect(cx + off, top, bw, hh, Math.min(12, hh / 2)); ctx.fill();
+      const la = prog(lt, 1.6 + i * 0.45, 0.4);
+      const sign = v > 0 ? '+' : '';
+      text(sign + fmt(v), cx + off + bw / 2, v >= 0 ? top - 14 : top + hh + 32, { size: 22, weight: 800, align: 'center', alpha: la });
+    });
+    text(String(yr), cx, 960, { size: 26, weight: 700, align: 'center', color: C.inkSoft, alpha: ga });
+  });
+  const a = easeOut(prog(lt, 4.4, 0.8));
+  if (a > 0) {
+    card(1130, 300, 610, 120, a, 20);
+    text('Естественный прирост — всегда плюс,', 1160, 350, { size: 26, weight: 800, alpha: a });
+    text('миграция то добавляет, то забирает', 1160, 392, { size: 24, weight: 500, color: C.inkSoft, alpha: a });
+  }
+}
+
+function sceneEthnic(lt) {
+  heading(lt, 'Кто живёт в Якутии', 'Национальный состав, % от указавших национальность (перепись 2021)');
+  const cx = 600, cy = 640, R1 = 280, R0 = 165;
+  const cols = [C.pink, C.teal, C.violet, '#F29B38', '#9AA3B5'];
+  const sweep = easeInOut(prog(lt, 0.8, 2.6)) * Math.PI * 2;
+  let a0 = -Math.PI / 2;
+  DATA.ethnic.forEach(([name, pct], i) => {
+    const span = pct / 100 * Math.PI * 2;
+    const s = a0, e = Math.min(a0 + span, -Math.PI / 2 + sweep);
+    if (e > s) {
+      ctx.beginPath(); ctx.arc(cx, cy, R1, s, e); ctx.arc(cx, cy, R0, e, s, true); ctx.closePath();
+      ctx.fillStyle = cols[i]; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 4; ctx.stroke();
+    }
+    a0 += span;
+  });
+  const cq = easeOut(prog(lt, 2.4, 0.8));
+  text('995 686', cx, cy + 10, { size: 58, weight: 900, head: true, align: 'center', alpha: cq });
+  text('жителей в 2021', cx, cy + 52, { size: 24, weight: 500, align: 'center', color: C.inkSoft, alpha: cq });
+  DATA.ethnic.forEach(([name, pct, cnt], i) => {
+    const q = easeOut(prog(lt, 1.2 + i * 0.4, 0.7));
+    const x = 1040 + (1 - q) * 40, y = 380 + i * 120;
+    card(x, y, 760, 100, q, 22);
+    ctx.save(); ctx.globalAlpha *= q; roundRect(x + 28, y + 30, 40, 40, 10); ctx.fillStyle = cols[i]; ctx.fill(); ctx.restore();
+    text(name, x + 92, y + 62, { size: 34, weight: 800, alpha: q });
+    if (cnt) text(fmt(cnt) + ' чел.', x + 380, y + 61, { size: 24, weight: 500, color: C.inkSoft, alpha: q });
+    text(fmt(pct * easeOut(prog(lt, 1.2 + i * 0.4, 1.4)), 1) + '%', x + 730, y + 64, { size: 40, weight: 900, head: true, align: 'right', color: cols[i] === '#9AA3B5' ? C.ink : cols[i], alpha: q });
+  });
+}
+
+function sceneOutro(lt) {
+  const p1 = easeOut(prog(lt, 0.2, 0.9));
+  text('Итог', W / 2, 260 - (1 - p1) * 30, { size: 40, weight: 700, align: 'center', color: C.pink, alpha: p1 });
+  text('Якутия растёт и перешагнула 1 млн жителей', W / 2, 360 - (1 - p1) * 30, { size: 66, weight: 900, head: true, align: 'center', alpha: p1 });
+  const p2 = easeOut(prog(lt, 0.8, 0.9));
+  text('Рождаемость снижается, но остаётся одной из самых высоких на Дальнем Востоке,', W / 2, 440, { size: 30, weight: 500, align: 'center', color: C.inkSoft, alpha: p2 });
+  text('а продолжительность жизни вернулась к росту после пандемии', W / 2, 482, { size: 30, weight: 500, align: 'center', color: C.inkSoft, alpha: p2 });
+  const p3 = easeOut(prog(lt, 1.6, 0.9));
+  card(160, 580, 1600, 330, p3);
+  text('Источники', 210, 650, { size: 30, weight: 800, alpha: p3 });
+  DATA.sources.forEach((s, i) => text('•  ' + s, 210, 720 + i * 60, { size: 23, weight: 500, color: C.inkSoft, alpha: easeOut(prog(lt, 1.9 + i * 0.3, 0.7)) }));
+}
+
+/* =====================================================================
+   ЗАПУСК: в браузере — живой предпросмотр; при рендере — покадрово
+   ===================================================================== */
+window.DURATION = DURATION; window.FPS = FPS;
+window.renderFrame = t => render(t);
+window.fontsReady = Promise.all([
+  document.fonts.load(`900 100px ${FONT}`), document.fonts.load(`500 100px ${FONT}`),
+  document.fonts.load(`900 100px "Inter Display"`),
+]).catch(() => {});
+if (!/render=1/.test(location.search)) {
+  window.fontsReady.then(() => {
+    const start = performance.now();
+    const loop = now => { render(((now - start) / 1000) % DURATION); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
+</script>
+</body>
+</html>
