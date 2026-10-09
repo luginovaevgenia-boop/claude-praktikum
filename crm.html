@@ -1,0 +1,484 @@
+<title>CRM студии</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: шапка с итогами дня → панель вкладок и поиска → воронка из 4 колонок (на телефоне одна под другой) или расписание по дням */
+  :root {
+    --bg: #f3f4f7;
+    --surface: #ffffff;
+    --surface-2: #eceef3;
+    --line: #d9dce5;
+    --fg: #1a1f2b;
+    --muted: #5d6475;
+    --accent: #5b3fd1;
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(91, 63, 209, .10);
+    --st-new: #2f6fde;
+    --st-work: #c27a0e;
+    --st-sold: #1f8a4c;
+    --st-lost: #8a8f9c;
+    --danger: #c23a3a;
+    --shadow: 0 1px 2px rgba(20, 24, 40, .06), 0 4px 14px rgba(20, 24, 40, .05);
+    --display: "Manrope", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12141b; --surface: #1b1e27; --surface-2: #232733; --line: #323746;
+      --fg: #eef0f5; --muted: #a2a8b8; --accent: #9d86ff; --accent-ink: #15121f;
+      --accent-soft: rgba(157, 134, 255, .16);
+      --st-new: #6ea0ff; --st-work: #e8a63c; --st-sold: #4cc47f; --st-lost: #8d93a3; --danger: #ff7b7b;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12141b; --surface: #1b1e27; --surface-2: #232733; --line: #323746;
+    --fg: #eef0f5; --muted: #a2a8b8; --accent: #9d86ff; --accent-ink: #15121f;
+    --accent-soft: rgba(157, 134, 255, .16);
+    --st-new: #6ea0ff; --st-work: #e8a63c; --st-sold: #4cc47f; --st-lost: #8d93a3; --danger: #ff7b7b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 400 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 18px; }
+  h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Шапка */
+  .top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .brand { display: grid; gap: 2px; }
+  .brand h1 { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  .brand p { margin: 0; color: var(--muted); font-size: 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; cursor: pointer; }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+  .btn.danger.armed { background: var(--danger); color: var(--surface); border-color: var(--danger); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Итоги */
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 2px; min-width: 0; }
+  .stat .k { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  .stat .v { font-family: var(--display); font-weight: 800; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .stat .s { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* Панель */
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .tabs { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+  .tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow); }
+  .search { flex: 1 1 240px; max-width: 360px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 12px; }
+  .notice { background: var(--accent-soft); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
+
+  /* Воронка */
+  .board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  @media (max-width: 1000px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .board { grid-template-columns: minmax(0, 1fr); } }
+  .col { background: var(--surface-2); border-radius: 14px; padding: 10px; display: grid; gap: 8px; min-height: 120px; align-content: start; transition: background .15s; }
+  .col.drop { background: var(--accent-soft); }
+  .col-h { display: flex; align-items: baseline; gap: 8px; padding: 4px 4px 6px; }
+  .col-h h2 { font-size: 15px; font-weight: 800; }
+  .col-h .hint { color: var(--muted); font-size: 13px; }
+  .col-h .n { margin-left: auto; font-family: var(--mono); font-size: 13px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; align-self: center; background: var(--c); }
+  .card { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; cursor: pointer; text-align: left; width: 100%; min-width: 0; }
+  .card:hover { border-color: var(--muted); border-left-color: var(--c); }
+  .card.dragging { opacity: .45; }
+  .card .name { font-weight: 600; overflow-wrap: anywhere; }
+  .card .svc { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+  .card .when { display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 13px; }
+  .card .when .today { background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 0 6px; font-family: var(--body); font-weight: 600; font-size: 12px; }
+  .card .when.past { color: var(--muted); }
+  .col-empty { color: var(--muted); font-size: 13px; padding: 8px 4px; }
+
+  /* Расписание */
+  .sched { display: grid; gap: 16px; }
+  .sched-tools { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; }
+  .day h3 { font-size: 14px; font-weight: 800; text-transform: capitalize; margin-bottom: 6px; }
+  .day h3 small { font-family: var(--body); font-weight: 500; color: var(--muted); text-transform: none; margin-left: 6px; }
+  .rows { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 64px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr) 120px; gap: 12px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; }
+  .row:first-child { border-top: 0; }
+  .row:hover { background: var(--surface-2); }
+  .row .t { font-family: var(--mono); font-weight: 500; }
+  .row .ph { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .row > * { min-width: 0; overflow-wrap: anywhere; }
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 56px minmax(0, 1fr); row-gap: 2px; }
+    .row .ph, .row .svc, .row .pill { grid-column: 2; }
+  }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--c); justify-self: start; }
+
+  /* Пусто */
+  .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; padding: 32px 20px; text-align: center; display: grid; gap: 10px; justify-items: center; }
+  .empty h2 { font-size: 20px; }
+  .empty p { margin: 0; color: var(--muted); max-width: 46ch; }
+
+  /* Форма */
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(520px, calc(100vw - 32px)); background: var(--surface); color: var(--fg); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(15, 18, 28, .45); }
+  form { display: grid; gap: 14px; padding: 20px; }
+  .f-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .f-head h2 { font-size: 20px; }
+  .x { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 440px) { .grid2 { grid-template-columns: 1fr; } }
+  label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  input, select, textarea { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; background: var(--bg); font-size: 15px; font-weight: 400; color: var(--fg); width: 100%; min-width: 0; }
+  textarea { resize: vertical; min-height: 64px; }
+  .stages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  @media (max-width: 440px) { .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stages input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .stages label { border: 1px solid var(--line); border-radius: 9px; padding: 8px; text-align: center; cursor: pointer; color: var(--fg); font-weight: 600; display: block; }
+  .stages input:checked + label { border-color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+  .stages input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .f-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+  .f-foot .right { display: flex; gap: 8px; margin-left: auto; }
+  .err { color: var(--danger); font-size: 14px; margin: 0; }
+  .meta { font-size: 12px; color: var(--muted); margin: 0; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 500; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>CRM студии</h1>
+      <p>Запись клиентов на услуги и воронка продаж</p>
+    </div>
+    <button class="btn primary" id="add-btn" type="button">+ Новая запись</button>
+  </header>
+
+  <section class="stats" aria-label="Итоги">
+    <div class="stat"><span class="k">Сегодня</span><span class="v" id="st-today">0</span><span class="s" id="st-today-s">записей на сегодня</span></div>
+    <div class="stat"><span class="k">Ближайшая</span><span class="v" id="st-next">—</span><span class="s" id="st-next-s">нет предстоящих</span></div>
+    <div class="stat"><span class="k">В работе</span><span class="v" id="st-open">0</span><span class="s">заявки без итога</span></div>
+    <div class="stat"><span class="k">Конверсия</span><span class="v" id="st-conv">—</span><span class="s" id="st-conv-s">продажи из закрытых</span></div>
+  </section>
+
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-board" aria-selected="true">Воронка</button>
+      <button type="button" role="tab" id="tab-sched" aria-selected="false">Расписание</button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="Поиск: фамилия, телефон, услуга" aria-label="Поиск">
+  </div>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <main id="view"></main>
+</div>
+
+<dialog id="dlg">
+  <form id="frm" novalidate>
+    <div class="f-head">
+      <h2 id="f-title">Новая запись</h2>
+      <button class="x" type="button" id="f-close" aria-label="Закрыть">×</button>
+    </div>
+    <div class="grid2">
+      <label for="f-last">Фамилия<input id="f-last" autocomplete="off" required></label>
+      <label for="f-first">Имя<input id="f-first" autocomplete="off" required></label>
+    </div>
+    <label for="f-phone">Телефон<input id="f-phone" type="tel" inputmode="tel" placeholder="+7 (900) 123-45-67" required></label>
+    <label for="f-service">Услуга<input id="f-service" list="svc-list" autocomplete="off" placeholder="Например, стрижка" required></label>
+    <datalist id="svc-list"></datalist>
+    <div class="grid2">
+      <label for="f-date">Дата<input id="f-date" type="date" required></label>
+      <label for="f-time">Время<input id="f-time" type="time" step="300" required></label>
+    </div>
+    <div>
+      <label style="margin-bottom:6px">Этап</label>
+      <div class="stages" id="f-stages"></div>
+    </div>
+    <label for="f-note">Комментарий<textarea id="f-note" placeholder="Откуда пришёл, пожелания, причина отказа"></textarea></label>
+    <p class="err" id="f-err" hidden></p>
+    <p class="meta" id="f-meta" hidden></p>
+    <div class="f-foot">
+      <button class="btn danger" type="button" id="f-del" hidden>Удалить</button>
+      <div class="right">
+        <button class="btn" type="button" id="f-cancel">Отмена</button>
+        <button class="btn primary" type="submit" id="f-save">Сохранить</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  const STAGES = [
+    { id: 'new',  name: 'Заявка',   hint: 'написали',    c: 'var(--st-new)' },
+    { id: 'work', name: 'В работе', hint: 'обработали',  c: 'var(--st-work)' },
+    { id: 'sold', name: 'Продажа',  hint: 'купили',      c: 'var(--st-sold)' },
+    { id: 'lost', name: 'Отказ',    hint: 'отвалились',  c: 'var(--st-lost)' }
+  ];
+  const stageById = Object.fromEntries(STAGES.map(s => [s.id, s]));
+
+  let db = null, readOnly = false, loaded = false, records = [];
+  let view = 'board', showPast = false, editingId = null;
+  try { const v = localStorage.getItem('crm-view'); if (v === 'board' || v === 'sched') view = v; } catch (e) {}
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ---------- даты и телефоны ----------
+  const pad = n => String(n).padStart(2, '0');
+  const todayStr = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const nowTime = () => { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  const parseDate = s => { const [y, m, d] = (s || '').split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+  const fmtDay = s => parseDate(s).toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'short' });
+  const fmtDayLong = s => parseDate(s).toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const key = r => (r.date || '9999-99-99') + ' ' + (r.time || '99:99');
+  const isPast = r => key(r) < todayStr() + ' ' + nowTime();
+
+  function fmtPhone(raw) {
+    let d = String(raw || '').replace(/\D/g, '');
+    if (d.length === 11 && (d[0] === '8' || d[0] === '7')) d = '7' + d.slice(1);
+    if (d.length === 10) d = '7' + d;
+    if (d.length === 11 && d[0] === '7') return `+7 (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9)}`;
+    return String(raw || '').trim();
+  }
+  const fullName = r => [r.lastName, r.firstName].filter(Boolean).join(' ');
+
+  // ---------- фильтр ----------
+  function filtered() {
+    const q = $('q').value.trim().toLowerCase();
+    if (!q) return records;
+    const qd = q.replace(/\D/g, '');
+    return records.filter(r => {
+      const hay = [r.lastName, r.firstName, r.service, r.note].join(' ').toLowerCase();
+      if (hay.includes(q)) return true;
+      return qd.length >= 3 && String(r.phone || '').replace(/\D/g, '').includes(qd);
+    });
+  }
+
+  // ---------- отрисовка ----------
+  function render() {
+    renderStats();
+    $('tab-board').setAttribute('aria-selected', view === 'board');
+    $('tab-sched').setAttribute('aria-selected', view === 'sched');
+    const v = $('view');
+    if (!loaded) { v.innerHTML = '<div class="empty"><p>Загружаю записи…</p></div>'; return; }
+    if (!records.length) {
+      v.innerHTML = `<div class="empty"><h2>Пока нет ни одной записи</h2>
+        <p>Здесь появятся клиенты студии: кто написал, кого уже обработали, кто купил услугу и кто отказался. Записи видит вся команда.</p>
+        ${readOnly || !db ? '' : '<button class="btn primary" type="button" data-act="add">+ Записать первого клиента</button>'}</div>`;
+      return;
+    }
+    view === 'board' ? renderBoard(v) : renderSched(v);
+  }
+
+  function renderStats() {
+    const t = todayStr();
+    const todays = records.filter(r => r.date === t && r.stage !== 'lost');
+    $('st-today').textContent = todays.length;
+    $('st-today-s').textContent = todays.length ? 'записей на сегодня' : 'на сегодня никого';
+    const next = records.filter(r => !isPast(r) && r.stage !== 'lost').sort((a, b) => key(a) < key(b) ? -1 : 1)[0];
+    $('st-next').textContent = next ? next.time : '—';
+    $('st-next-s').textContent = next ? (next.date === t ? '' : fmtDay(next.date) + ' · ') + fullName(next) : 'нет предстоящих';
+    $('st-open').textContent = records.filter(r => r.stage === 'new' || r.stage === 'work').length;
+    const sold = records.filter(r => r.stage === 'sold').length, lost = records.filter(r => r.stage === 'lost').length;
+    $('st-conv').textContent = sold + lost ? Math.round(sold * 100 / (sold + lost)) + '%' : '—';
+    $('st-conv-s').textContent = sold + lost ? `${sold} продаж из ${sold + lost}` : 'продажи из закрытых';
+  }
+
+  function cardHtml(r) {
+    const s = stageById[r.stage] || STAGES[0];
+    const t = r.date === todayStr();
+    return `<button type="button" class="card" style="--c:${s.c}" data-id="${esc(r.id)}" draggable="${!readOnly}">
+      <span class="name">${esc(fullName(r))}</span>
+      <span class="svc">${esc(r.service)}</span>
+      <span class="when${isPast(r) ? ' past' : ''}">${t ? '<span class="today">сегодня</span>' : esc(fmtDay(r.date))} ${esc(r.time || '')}</span>
+    </button>`;
+  }
+
+  function renderBoard(v) {
+    const list = filtered();
+    v.innerHTML = '<div class="board">' + STAGES.map(s => {
+      const items = list.filter(r => (r.stage || 'new') === s.id).sort((a, b) => key(a) < key(b) ? -1 : 1);
+      return `<section class="col" data-stage="${s.id}" style="--c:${s.c}">
+        <div class="col-h"><span class="dot"></span><h2>${s.name}</h2><span class="hint">${s.hint}</span><span class="n">${items.length}</span></div>
+        ${items.map(cardHtml).join('') || '<div class="col-empty">Пусто</div>'}
+      </section>`;
+    }).join('') + '</div>';
+  }
+
+  function renderSched(v) {
+    const t = todayStr();
+    let list = filtered().slice().sort((a, b) => key(a) < key(b) ? -1 : 1);
+    const pastCount = list.filter(r => r.date < t).length;
+    if (!showPast) list = list.filter(r => r.date >= t);
+    const days = {};
+    list.forEach(r => (days[r.date] = days[r.date] || []).push(r));
+    const tools = `<div class="sched-tools"><label style="display:flex;gap:6px;align-items:center;font-weight:500;color:inherit;font-size:14px">
+      <input type="checkbox" id="past-toggle" style="width:auto" ${showPast ? 'checked' : ''}> Показать прошедшие дни (${pastCount})</label></div>`;
+    const body = Object.keys(days).map(d => `<div class="day"><h3>${d === t ? 'Сегодня' : esc(fmtDayLong(d))}<small>${days[d].length} ${plural(days[d].length)}</small></h3>
+      <div class="rows">${days[d].map(r => { const s = stageById[r.stage] || STAGES[0]; return `
+        <button type="button" class="row" data-id="${esc(r.id)}">
+          <span class="t">${esc(r.time || '—')}</span>
+          <span><b>${esc(fullName(r))}</b></span>
+          <span class="ph">${esc(fmtPhone(r.phone))}</span>
+          <span class="svc">${esc(r.service)}</span>
+          <span class="pill" style="--c:${s.c}"><span class="dot"></span>${s.name}</span>
+        </button>`; }).join('')}</div></div>`).join('');
+    v.innerHTML = '<div class="sched">' + tools + (body || '<div class="empty"><p>Предстоящих записей нет.</p></div>') + '</div>';
+  }
+  const plural = n => { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? 'запись' : a >= 2 && a <= 4 && (b < 12 || b > 14) ? 'записи' : 'записей'; };
+
+  // ---------- форма ----------
+  $('f-stages').innerHTML = STAGES.map(s => `<input type="radio" name="stage" id="f-st-${s.id}" value="${s.id}"><label for="f-st-${s.id}" style="--c:${s.c}">${s.name}</label>`).join('');
+
+  function openForm(id) {
+    if (!db) return;
+    editingId = id || null;
+    const r = id ? records.find(x => x.id === id) : null;
+    $('f-title').textContent = r ? fullName(r) : 'Новая запись';
+    $('f-last').value = r?.lastName || '';
+    $('f-first').value = r?.firstName || '';
+    $('f-phone').value = r ? fmtPhone(r.phone) : '';
+    $('f-service').value = r?.service || '';
+    $('f-date').value = r?.date || todayStr();
+    $('f-time').value = r?.time || '';
+    $('f-note').value = r?.note || '';
+    $('f-st-' + (r?.stage || 'new')).checked = true;
+    $('f-err').hidden = true;
+    $('f-del').hidden = !r || readOnly;
+    $('f-del').classList.remove('armed'); $('f-del').textContent = 'Удалить';
+    $('f-meta').hidden = !r?.createdAt;
+    if (r?.createdAt) $('f-meta').textContent = 'Создана ' + new Date(r.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    $('f-save').hidden = readOnly;
+    $('frm').querySelectorAll('input,textarea').forEach(el => el.disabled = readOnly);
+    $('svc-list').innerHTML = [...new Set(records.map(x => x.service).filter(Boolean))].sort().map(s => `<option value="${esc(s)}">`).join('');
+    $('dlg').showModal();
+    if (!r) $('f-last').focus();
+  }
+  const closeForm = () => $('dlg').close();
+
+  $('frm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (readOnly) return;
+    const data = {
+      lastName: $('f-last').value.trim(),
+      firstName: $('f-first').value.trim(),
+      phone: fmtPhone($('f-phone').value),
+      service: $('f-service').value.trim(),
+      date: $('f-date').value,
+      time: $('f-time').value,
+      stage: ($('frm').querySelector('input[name=stage]:checked') || {}).value || 'new',
+      note: $('f-note').value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    const missing = [['lastName', 'фамилию'], ['firstName', 'имя'], ['phone', 'телефон'], ['service', 'услугу'], ['date', 'дату'], ['time', 'время']].filter(([k]) => !data[k]).map(([, n]) => n);
+    if (missing.length) { showErr('Заполните ' + missing.join(', ') + '.'); return; }
+    if (data.phone.replace(/\D/g, '').length < 10) { showErr('В телефоне должно быть не меньше 10 цифр.'); return; }
+    $('f-save').disabled = true;
+    try {
+      if (editingId) await db.collection('clients').doc(editingId).update(data);
+      else await db.collection('clients').add({ ...data, createdAt: data.updatedAt });
+      closeForm();
+      toast(editingId ? 'Запись сохранена' : 'Клиент записан');
+    } catch (err) { showErr(errText(err)); }
+    finally { $('f-save').disabled = false; }
+  });
+
+  $('f-del').addEventListener('click', async () => {
+    const b = $('f-del');
+    if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Точно удалить?'; return; }
+    try { await db.collection('clients').doc(editingId).delete(); closeForm(); toast('Запись удалена'); }
+    catch (err) { showErr(errText(err)); }
+  });
+  $('f-close').addEventListener('click', closeForm);
+  $('f-cancel').addEventListener('click', closeForm);
+  $('f-phone').addEventListener('blur', e => { e.target.value = fmtPhone(e.target.value); });
+
+  function showErr(t) { $('f-err').textContent = t; $('f-err').hidden = false; }
+  function errText(err) {
+    if (err?.code === 'invalid_argument') { setReadOnly(); return 'У вас нет прав на изменение записей. Попросите владельца дать доступ «Участник» или выше.'; }
+    if (err?.code === 'quota_exceeded') return 'База заполнена. Удалите старые записи и попробуйте снова.';
+    return 'Не удалось сохранить. Проверьте соединение и попробуйте ещё раз.';
+  }
+
+  let toastTimer;
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2200); }
+
+  function setReadOnly() {
+    readOnly = true;
+    $('add-btn').hidden = true;
+    notice('У вас доступ только на просмотр. Чтобы записывать клиентов, попросите владельца дать права «Участник».');
+  }
+  function notice(t) { $('notice').textContent = t; $('notice').hidden = false; }
+
+  // ---------- события ----------
+  $('add-btn').addEventListener('click', () => openForm());
+  $('q').addEventListener('input', render);
+  $('tab-board').addEventListener('click', () => setView('board'));
+  $('tab-sched').addEventListener('click', () => setView('sched'));
+  function setView(v) { view = v; try { localStorage.setItem('crm-view', v); } catch (e) {} render(); }
+
+  $('view').addEventListener('click', e => {
+    if (e.target.closest('[data-act=add]')) return openForm();
+    const it = e.target.closest('[data-id]');
+    if (it) openForm(it.dataset.id);
+  });
+  $('view').addEventListener('change', e => { if (e.target.id === 'past-toggle') { showPast = e.target.checked; render(); } });
+
+  // перетаскивание карточек между этапами
+  let dragId = null;
+  $('view').addEventListener('dragstart', e => {
+    const c = e.target.closest('.card'); if (!c || readOnly) return;
+    dragId = c.dataset.id; c.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId);
+  });
+  $('view').addEventListener('dragend', e => { e.target.closest('.card')?.classList.remove('dragging'); document.querySelectorAll('.col.drop').forEach(c => c.classList.remove('drop')); });
+  $('view').addEventListener('dragover', e => {
+    const col = e.target.closest('.col'); if (!col || !dragId) return;
+    e.preventDefault();
+    document.querySelectorAll('.col.drop').forEach(c => c !== col && c.classList.remove('drop'));
+    col.classList.add('drop');
+  });
+  $('view').addEventListener('drop', async e => {
+    const col = e.target.closest('.col'); if (!col || !dragId) return;
+    e.preventDefault();
+    const id = dragId, stage = col.dataset.stage; dragId = null;
+    col.classList.remove('drop');
+    const r = records.find(x => x.id === id);
+    if (!r || r.stage === stage) return;
+    try { await db.collection('clients').doc(id).update({ stage, updatedAt: new Date().toISOString() }); toast(fullName(r) + ' → ' + stageById[stage].name); }
+    catch (err) { toast(errText(err)); }
+  });
+
+  // ---------- подключение к базе ----------
+  render();
+  (async () => {
+    try { db = window.claude?.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
+    if (!db) {
+      loaded = true; readOnly = true; $('add-btn').hidden = true;
+      notice('База записей недоступна в этом окне. Откройте CRM по ссылке, войдя в аккаунт claude.ai.');
+      render(); return;
+    }
+    try {
+      const user = await window.claude.use('user');
+      if (user && (await user.can('data.write')) === false) setReadOnly();
+    } catch (e) {}
+    db.collection('clients').onSnapshot(snap => {
+      records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      loaded = true; render();
+    }, err => {
+      loaded = true;
+      notice(err?.code === 'revoked' ? 'Доступ к базе закрыт.' : 'Связь с базой прервалась. Обновите страницу.');
+      render();
+    });
+  })();
+})();
+</script>
