@@ -225,7 +225,7 @@
   ];
   const stageById = Object.fromEntries(STAGES.map(s => [s.id, s]));
 
-  let db = null, readOnly = false, loaded = false, records = [];
+  let db = null, store = null, readOnly = false, loaded = false, records = [];
   let view = 'board', showPast = false, editingId = null;
   try { const v = localStorage.getItem('crm-view'); if (v === 'board' || v === 'sched') view = v; } catch (e) {}
 
@@ -273,7 +273,7 @@
     if (!records.length) {
       v.innerHTML = `<div class="empty"><h2>Пока нет ни одной записи</h2>
         <p>Здесь появятся клиенты студии: кто написал, кого уже обработали, кто купил услугу и кто отказался. Записи видит вся команда.</p>
-        ${readOnly || !db ? '' : '<button class="btn primary" type="button" data-act="add">+ Записать первого клиента</button>'}</div>`;
+        ${readOnly || !store ? '' : '<button class="btn primary" type="button" data-act="add">+ Записать первого клиента</button>'}</div>`;
       return;
     }
     view === 'board' ? renderBoard(v) : renderSched(v);
@@ -340,7 +340,7 @@
   $('f-stages').innerHTML = STAGES.map(s => `<input type="radio" name="stage" id="f-st-${s.id}" value="${s.id}"><label for="f-st-${s.id}" style="--c:${s.c}">${s.name}</label>`).join('');
 
   function openForm(id) {
-    if (!db) return;
+    if (!store) return;
     editingId = id || null;
     const r = id ? records.find(x => x.id === id) : null;
     $('f-title').textContent = r ? fullName(r) : 'Новая запись';
@@ -384,8 +384,8 @@
     if (data.phone.replace(/\D/g, '').length < 10) { showErr('В телефоне должно быть не меньше 10 цифр.'); return; }
     $('f-save').disabled = true;
     try {
-      if (editingId) await db.collection('clients').doc(editingId).update(data);
-      else await db.collection('clients').add({ ...data, createdAt: data.updatedAt });
+      if (editingId) await store.update(editingId, data);
+      else await store.add({ ...data, createdAt: data.updatedAt });
       closeForm();
       toast(editingId ? 'Запись сохранена' : 'Клиент записан');
     } catch (err) { showErr(errText(err)); }
@@ -395,7 +395,7 @@
   $('f-del').addEventListener('click', async () => {
     const b = $('f-del');
     if (!b.classList.contains('armed')) { b.classList.add('armed'); b.textContent = 'Точно удалить?'; return; }
-    try { await db.collection('clients').doc(editingId).delete(); closeForm(); toast('Запись удалена'); }
+    try { await store.remove(editingId); closeForm(); toast('Запись удалена'); }
     catch (err) { showErr(errText(err)); }
   });
   $('f-close').addEventListener('click', closeForm);
@@ -454,31 +454,54 @@
     col.classList.remove('drop');
     const r = records.find(x => x.id === id);
     if (!r || r.stage === stage) return;
-    try { await db.collection('clients').doc(id).update({ stage, updatedAt: new Date().toISOString() }); toast(fullName(r) + ' → ' + stageById[stage].name); }
+    try { await store.update(id, { stage, updatedAt: new Date().toISOString() }); toast(fullName(r) + ' → ' + stageById[stage].name); }
     catch (err) { toast(errText(err)); }
   });
 
   // ---------- подключение к базе ----------
+  // На claude.ai — общая база команды; на любом другом сайте — записи хранятся в этом браузере.
+  function localStore() {
+    const KEY = 'crm-studio-clients';
+    let subs = [];
+    const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+    const write = all => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {} subs.forEach(f => f(all)); };
+    let mem = read();
+    const save = () => write(mem);
+    return {
+      add: async d => { mem[Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = d; save(); },
+      update: async (id, d) => { mem[id] = { ...mem[id], ...d }; save(); },
+      remove: async id => { delete mem[id]; save(); },
+      subscribe: cb => { subs.push(all => cb(Object.entries(all).map(([id, r]) => ({ id, ...r })))); save(); }
+    };
+  }
+  function dbStore(db) {
+    const col = db.collection('clients');
+    return {
+      add: d => col.add(d),
+      update: (id, d) => col.doc(id).update(d),
+      remove: id => col.doc(id).delete(),
+      subscribe: cb => col.onSnapshot(snap => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))), err => {
+        loaded = true;
+        notice(err?.code === 'revoked' ? 'Доступ к базе закрыт.' : 'Связь с базой прервалась. Обновите страницу.');
+        render();
+      })
+    };
+  }
+
   render();
   (async () => {
     try { db = window.claude?.use ? await window.claude.use('db') : null; } catch (e) { db = null; }
-    if (!db) {
-      loaded = true; readOnly = true; $('add-btn').hidden = true;
-      notice('База записей недоступна в этом окне. Откройте CRM по ссылке, войдя в аккаунт claude.ai.');
-      render(); return;
+    if (db) {
+      try {
+        const user = await window.claude.use('user');
+        if (user && (await user.can('data.write')) === false) setReadOnly();
+      } catch (e) {}
+      store = dbStore(db);
+    } else {
+      store = localStore();
+      notice('Записи сохраняются только в этом браузере на этом устройстве. Общая база для всей команды работает в версии на claude.ai.');
     }
-    try {
-      const user = await window.claude.use('user');
-      if (user && (await user.can('data.write')) === false) setReadOnly();
-    } catch (e) {}
-    db.collection('clients').onSnapshot(snap => {
-      records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      loaded = true; render();
-    }, err => {
-      loaded = true;
-      notice(err?.code === 'revoked' ? 'Доступ к базе закрыт.' : 'Связь с базой прервалась. Обновите страницу.');
-      render();
-    });
+    store.subscribe(list => { records = list; loaded = true; render(); });
   })();
 })();
 </script>
