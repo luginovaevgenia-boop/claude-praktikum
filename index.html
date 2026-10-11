@@ -94,6 +94,18 @@
   .reply div { display: flex; gap: 12px; align-items: baseline; }
   .reply div::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateY(-2px); }
 
+
+  /* Робот-помощник */
+  .robot { display: block; height: auto; }
+  .prompt-wrap { position: relative; padding-top: 96px; min-width: 0; }
+  .robot-peek { position: absolute; top: 0; right: 28px; width: 128px; z-index: 0; animation: bob 4s ease-in-out infinite; }
+  .prompt { position: relative; z-index: 1; }
+  .spark { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 4px; }
+  .sec-head + .part { border-top: 0; padding-top: 0; }
+  .robot-inline { width: 84px; margin-bottom: 4px; }
+  .robot-wave { width: 110px; justify-self: end; margin-bottom: -8px; animation: bob 4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+
   /* Секции */
   section { padding-block: 56px; border-top: 1px solid var(--line); }
   .sec-head { display: grid; gap: 14px; margin-bottom: 32px; }
@@ -101,6 +113,9 @@
   /* Программа */
   .part { display: grid; gap: 20px; padding-block: 40px; border-top: 1px solid var(--line); }
   .part:first-of-type { border-top: 0; padding-top: 0; }
+  .day { padding: 14px 0; border-top: 1px solid var(--line); }
+  .day:first-of-type { border-top: 0; padding-top: 0; }
+  .day + .part { border-top: 0; padding-top: 16px; }
   .part-label { display: grid; gap: 8px; min-width: 0; }
   .part-label .num {
     justify-self: start; padding: 7px 14px; border-radius: 999px;
@@ -153,29 +168,54 @@
   footer { padding-block: 40px 56px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
 
   @media (prefers-reduced-motion: reduce) {
-    .caret { animation: none; }
+    .caret, .robot-peek, .robot-wave { animation: none; }
     .btn { transition: none; }
   }
 </style>
 
 <header class="hero">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="spark" viewBox="0 0 100 100"><g stroke="#ff8a5b" stroke-width="9" stroke-linecap="round"><line x1="50" y1="50" x2="50.0" y2="6.0"/><line x1="50" y1="50" x2="68.0" y2="18.8"/><line x1="50" y1="50" x2="88.1" y2="28.0"/><line x1="50" y1="50" x2="88.0" y2="50.0"/><line x1="50" y1="50" x2="88.1" y2="72.0"/><line x1="50" y1="50" x2="67.5" y2="80.3"/><line x1="50" y1="50" x2="50.0" y2="94.0"/><line x1="50" y1="50" x2="31.0" y2="82.9"/><line x1="50" y1="50" x2="11.9" y2="72.0"/><line x1="50" y1="50" x2="14.0" y2="50.0"/><line x1="50" y1="50" x2="11.9" y2="28.0"/><line x1="50" y1="50" x2="31.0" y2="17.1"/></g></symbol>
+  <symbol id="bot" viewBox="0 0 160 180">
+    <line x1="80" y1="9" x2="80" y2="30" stroke="#ff8a5b" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="80" cy="9" r="7" fill="#ff8a5b"/>
+    <rect x="16" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
+    <rect x="128" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
+    <path d="M48 132 Q28 142 26 160" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M112 132 Q140 130 144 104" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="144" cy="98" r="9" fill="#ff8a5b"/>
+    <rect x="46" y="114" width="68" height="58" rx="20" fill="#ff8a5b"/>
+    <circle cx="80" cy="143" r="11" fill="#1c0f08"/>
+    <circle cx="80" cy="143" r="4.5" fill="#ff8a5b"/>
+    <rect x="28" y="30" width="104" height="80" rx="28" fill="#24211e" stroke="#ff8a5b" stroke-width="4"/>
+    <rect x="40" y="44" width="80" height="52" rx="20" fill="#100f0e"/>
+    <circle cx="62" cy="67" r="8" fill="#ff8a5b"/><circle cx="98" cy="67" r="8" fill="#ff8a5b"/>
+    <circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/>
+    <path d="M68 81 Q80 92 92 81" stroke="#ff8a5b" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="50" cy="82" r="5" fill="#ff8a5b" opacity=".35"/><circle cx="110" cy="82" r="5" fill="#ff8a5b" opacity=".35"/>
+  </symbol>
+</svg>
+
   <div class="wrap hero-grid">
     <div class="hero-text">
-      <p class="eyebrow">Практикум Евгении Лугиновой · 10 октября</p>
+      <p class="eyebrow"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум Евгении Лугиновой · 14 или 17 октября</p>
       <h1>Claude — ваш личный <span class="hl">ИИ-помощник</span> в бизнесе и жизни</h1>
-      <p class="lead">Пока одни спорят, заменит ли ИИ людей, другие уже передали ему половину рутины. <b>За одну встречу вы установите Claude, подключите его к своим сервисам и сделаете вживую то, на что обычно уходит неделя работы маркетолога, аналитика и программиста.</b></p>
+      <p class="lead">Пока одни спорят, заменит ли ИИ людей, другие уже передали ему половину рутины. <b>За одну встречу вы установите Claude, подключите его к своим сервисам и сделаете вживую то, на что обычно уходит неделя работы маркетолога, аналитика и программиста. А ещё соберёте своего ИИ-агента, который останется работать на вас после практикума.</b></p>
       <div class="facts">
-        <div class="fact wide"><small>Когда</small>10 октября, суббота, 10:00</div>
+        <div class="fact"><small>Дата на выбор</small>среда, 14 октября, 16:30</div>
+        <div class="fact"><small>или</small>суббота, 17 октября, 10:00</div>
         <div class="fact wide"><small>Где</small>адрес пришлю после записи</div>
         <div class="fact"><small>Длительность</small>около 3,5 часов</div>
-        <div class="fact"><small>Группа</small>всего 5 человек</div>
+        <div class="fact"><small>Группа</small>всего 4 человека</div>
       </div>
       <div class="cta-row">
-        <a class="btn" href="#price">Записаться на практикум</a>
-        <span class="muted">Практика на ваших устройствах</span>
+        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Записаться в WhatsApp</a>
+        <span class="muted">Предоплата 5 000 ₽</span>
       </div>
     </div>
 
+    <div class="prompt-wrap">
+    <svg class="robot robot-peek" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
     <div class="prompt" aria-label="Пример запроса к Claude">
       <div class="prompt-head"><div class="dots"><i></i><i></i><i></i></div><span>Формула запроса</span></div>
       <div class="formula">
@@ -190,6 +230,7 @@
         <div>Готовый текст поста с призывом</div>
       </div>
     </div>
+    </div>
   </div>
 </header>
 
@@ -201,45 +242,64 @@
         <h2>От установки до первых результатов для вашего бизнеса</h2>
       </div>
 
+
       <div class="part">
         <div class="part-label">
-          <span class="num">Старт</span>
-          <h3>Запускаем Claude</h3>
+          <span class="num">Блок 1</span>
+          <h3>Установка</h3>
           <p>Чтобы ни у кого не осталось «у меня не работает».</p>
         </div>
         <div class="items">
           <div class="item">
-            <h3>ИИ, который делает, а не болтает</h3>
-            <p>Чем Claude отличается от других нейросетей. Живая демонстрация с первых минут.</p>
+            <h3>Загрузка</h3>
+            <p>Скачиваем Claude на компьютер и телефон вместе, шаг за шагом.</p>
           </div>
           <div class="item">
-            <h3>Установка без мучений</h3>
-            <p>Ставим на компьютер и телефон вместе, шаг за шагом. Не получается — помогу лично.</p>
+            <h3>Установка и вход</h3>
+            <p>Регистрируемся и входим в аккаунт. Не получается — помогу лично.</p>
           </div>
-          <div class="item wide">
-            <h3>Формула запроса, после которой ИИ понимает вас с полуслова</h3>
-            <p>Как ставить задачи, чтобы ответы были точными. Голос, фото, файлы. Как научить Claude «помнить» вас и ваш стиль.</p>
+          <div class="item">
+            <h3>Оплата подписки</h3>
+            <p>Оформляем подписку Claude, чтобы были доступны все возможности практикума, в том числе Claude Code.</p>
           </div>
         </div>
       </div>
 
       <div class="part">
         <div class="part-label">
-          <span class="num">Часть 1</span>
-          <h3>Claude для жизни</h3>
-          <p>Время и голова освобождаются для важного.</p>
+          <span class="num">Блок 2</span>
+          <h3>Основные настройки и подключения</h3>
+          <p>Claude узнаёт вас и получает доступ к вашим делам.</p>
         </div>
         <div class="items">
           <div class="item">
-            <h3>Ваш личный секретарь</h3>
-            <p>Подключаем Google Диск, Календарь и Notion. «Что у меня на неделе?», «найди тот документ», «запиши мои идеи» — Claude делает это сам.</p>
+            <h3>Основные настройки</h3>
+            <p>Как научить Claude «помнить» вас и ваш стиль. Голос, фото, файлы.</p>
+          </div>
+          <div class="item">
+            <h3>Подключаем коннекторы</h3>
+            <p>Google Диск, Календарь и Notion. «Что у меня на неделе?», «найди тот документ», «запиши мои идеи» — Claude делает это сам.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 3</span>
+          <h3>Знакомство с Claude: для жизни и для работы</h3>
+          <p>Настраиваем Claude под вашу жизнь и ваш бизнес.</p>
+        </div>
+        <div class="items">
+          <div class="item wide">
+            <h3>Формула запроса, после которой ИИ понимает вас с полуслова</h3>
+            <p>Как ставить задачи, чтобы ответы были точными: <b>кто я + задача + контекст + формат</b>.</p>
           </div>
           <div class="item">
             <h3>Учиться в 10 раз быстрее</h3>
             <ul>
               <li><b>YouTube → конспект:</b> часовое видео в одну страницу главного</li>
+              <li><b>Лекция, вебинар или встреча → расшифровка → конспект</b> по вашему шаблону: где бесплатно получить текст из аудио и видео</li>
               <li><b>Книга или PDF → выжимка</b> и ответы на ваши вопросы</li>
-              <li>Сложная тема простыми словами</li>
             </ul>
           </div>
           <div class="item">
@@ -251,19 +311,9 @@
             </ul>
           </div>
           <div class="item">
-            <h3>Планы без головной боли</h3>
-            <p>Маршрут поездки, план переезда или праздника, семейный бюджет — Claude составит и разложит по шагам.</p>
+            <h3>Проекты: Claude, который вас уже знает</h3>
+            <p>Отдельное пространство под задачу: кто вы, ваши клиенты, прайс, тон общения и файлы. Каждый новый чат в проекте уже знает всё это. Проект «Мой бизнес», «Учёба», «Дом и семья».</p>
           </div>
-        </div>
-      </div>
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Часть 2</span>
-          <h3>Claude для работы и бизнеса</h3>
-          <p>Недельная работа команды — за один вечер.</p>
-        </div>
-        <div class="items">
           <div class="item">
             <h3>Маркетолог за 2 минуты</h3>
             <ul>
@@ -273,35 +323,79 @@
             </ul>
           </div>
           <div class="item">
-            <h3>Claude сам заходит в интернет</h3>
-            <p>Расширение для Chrome: Claude открывает сайты и соцсети и работает за вас.</p>
-            <ul>
-              <li><b>Аудит Инстаграм-страницы</b>, своей или конкурента: что цепляет, что отталкивает, что исправить</li>
-              <li>Сбор информации с нескольких сайтов в одну таблицу</li>
-            </ul>
-          </div>
-          <div class="item">
             <h3>Из хаоса — в порядок</h3>
             <ul>
               <li><b>Голосовое → коммерческое предложение:</b> наговорите мысли как есть, получите готовое КП</li>
               <li><b>Созвон → протокол:</b> расшифровка, решения и задачи по итогам встречи</li>
             </ul>
           </div>
+          <div class="item wide live">
+            <h3>Скиллы и свой ИИ-агент</h3>
+            <p>Сохраняем удачный способ работы как навык, и Claude применяет его сам: «Пост в моём стиле», «Конспект по моему шаблону», «Ответ клиенту».</p>
+            <div class="chain">
+              <span>проект</span><i>+</i><span>инструкции</span><i>+</i><span>подключения</span><i>+</i><span>скиллы</span><i>=</i><span>агент</span>
+            </div>
+            <p>Каждый собирает своего агента под свою задачу и уходит с работающим помощником.</p>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="part">
+        <div class="part-label">
+          <svg class="robot robot-inline" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+          <span class="num">Блок 4</span>
+          <h3>Claude Code</h3>
+          <p>Создаём то, что раньше делал программист. Каждый выбирает своё.</p>
+        </div>
+        <div class="items">
           <div class="item">
-            <h3>Делаем без программиста</h3>
+            <h3>Сайт</h3>
+            <p>Ваш лендинг или визитка, опубликованные по ссылке. Без знания кода.</p>
+          </div>
+          <div class="item">
+            <h3>Интерактивная презентация</h3>
+            <p>Презентация для клиентов или партнёров, которую можно листать и открывать по ссылке.</p>
+          </div>
+          <div class="item">
+            <h3>Видеопрезентация</h3>
+            <p>Короткий ролик о вашем бизнесе или продукте.</p>
+          </div>
+          <div class="item">
+            <h3>Или своё</h3>
             <ul>
-              <li><b>Интерактивный квиз</b> для клиентов: подбирает продукт и собирает заявки</li>
-              <li><b>Калькулятор для бизнеса:</b> себестоимость, наценка, точка безубыточности</li>
+              <li><b>Квиз для клиентов:</b> подбирает продукт и собирает заявки</li>
+              <li><b>Калькулятор:</b> себестоимость, наценка, точка безубыточности</li>
               <li><b>Анализ продаж из Excel:</b> что продаётся, а что лежит мёртвым грузом</li>
-              <li><b>Ваш лендинг по ссылке</b> за 10 минут, без знания кода</li>
             </ul>
           </div>
           <div class="item wide live">
             <h3>Разбор вживую: бизнес участника за 30 минут</h3>
             <div class="chain">
-              <span>клиенты</span><i>→</i><span>конкуренты</span><i>→</i><span>оффер</span><i>→</i><span>лендинг</span><i>→</i><span>квиз</span><i>→</i><span>контент-план</span>
+              <span>клиенты</span><i>→</i><span>конкуренты</span><i>→</i><span>оффер</span><i>→</i><span>сайт</span><i>→</i><span>контент-план</span>
             </div>
             <p>Недельная работа маркетолога на ваших глазах — за полчаса.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 5</span>
+          <h3>Claude в Chrome</h3>
+          <p>Claude сам заходит в интернет и работает за вас.</p>
+        </div>
+        <div class="items">
+          <div class="item">
+            <h3>Установка расширения</h3>
+            <p>Ставим расширение Claude для Chrome и разрешаем ему работать с сайтами. Claude открывает сайты и соцсети в вашем браузере.</p>
+          </div>
+          <div class="item">
+            <h3>Что он умеет</h3>
+            <ul>
+              <li><b>Аудит Инстаграм-страницы</b>, своей или конкурента: что цепляет, что отталкивает, что исправить</li>
+              <li>Сбор информации с нескольких сайтов в одну таблицу</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -331,8 +425,10 @@
         <li>Claude, установленный и настроенный на компьютере и телефоне</li>
         <li>Подключённые Google Диск, Календарь и Notion</li>
         <li>Портрет клиента и контент-план для вашего бизнеса</li>
-        <li>Свой первый лендинг или квиз, опубликованный по ссылке</li>
-        <li>Памятка с формулой запросов и готовыми шаблонами</li>
+        <li>Свои проекты в Claude: для бизнеса и для жизни</li>
+        <li>Скиллы под ваши задачи и собственный ИИ-агент</li>
+        <li>Свой сайт, интерактивная презентация или видео, созданные в Claude Code</li>
+        <li>Расширение Claude для Chrome, установленное и настроенное</li>
         <li>Личный план, что делегировать ИИ</li>
         <li>Чат поддержки в течение недели после практикума</li>
       </ul>
@@ -362,7 +458,7 @@
         <h2>Что взять с собой</h2>
       </div>
       <div style="display:grid;gap:14px">
-        <p>Ноутбук с зарядкой, телефон и доступ к своей почте Google.</p>
+        <p>Ноутбук с зарядкой, телефон, доступ к своей почте Google и браузер Google Chrome на ноутбуке.</p>
         <p class="muted">За пару дней до встречи пришлю памятку, как подготовиться, чтобы всё установилось быстро.</p>
       </div>
     </div>
@@ -378,13 +474,16 @@
         <div class="tier main">
           <span class="label">Практикум целиком</span>
           <span class="sum">5 000 ₽</span>
-          <span>Около 3,5 часов практики, памятка с шаблонами и неделя поддержки в чате</span>
+          <span>Около 3,5 часов практики и неделя поддержки в чате</span>
         </div>
       </div>
       <div class="signup">
-        <p class="seats">Всего 5 мест: группа маленькая, чтобы я успела помочь каждому.</p>
+        <svg class="robot robot-wave" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+        <p class="seats">Всего 4 места: группа маленькая, чтобы я успела помочь каждому.</p>
+        <p class="muted">Выберите среду или субботу и напишите мне в WhatsApp. Место закрепляется предоплатой 5 000 ₽, я подскажу, как её внести.</p>
+        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Написать в WhatsApp</a>
         <div class="contact">
-          <p class="muted">Чтобы записаться, позвоните или напишите:</p>
+          <p class="muted">Или позвоните:</p>
           <a class="phone" href="tel:+79248604162">8 924 860-41-62</a>
           <p class="muted">Место встречи пришлю в личном сообщении после записи.</p>
         </div>
@@ -394,5 +493,5 @@
 </main>
 
 <footer>
-  <div class="wrap">Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</div>
+  <div class="wrap"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</div>
 </footer>
