@@ -1,0 +1,590 @@
+<title>Практикум по Claude</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Roboto:wght@400;500;700&display=swap">
+<style>
+  /* Layout: мобильная колонка везде (на компьютере — по центру); крупный текст, карточки одна под другой */
+  :root {
+    --bg: #100f0e;
+    --surface: #1b1917;
+    --surface-2: #24211e;
+    --line: #3a352f;
+    --fg: #f6f1ea;
+    --muted: #c9bfb3;
+    --accent: #ff8a5b;
+    --accent-soft: rgba(255, 138, 91, .14);
+    --accent-ink: #1c0f08;
+    --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+    --body: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 18px/1.6 var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; }
+  @media (max-width: 380px) { .wrap { padding-inline: 16px; } }
+
+  h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+  h1 { font-weight: 800; font-size: clamp(32px, 9vw, 46px); line-height: 1.1; }
+  h2 { font-weight: 800; font-size: clamp(26px, 7vw, 34px); line-height: 1.15; }
+  h3 { font-weight: 600; font-size: 21px; line-height: 1.3; }
+  p { margin: 0; }
+  .eyebrow {
+    font: 600 14px/1.3 var(--display);
+    letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
+  }
+  .muted { color: var(--muted); }
+  .fill { color: var(--accent); border-bottom: 1px dashed var(--accent); }
+
+  /* Hero */
+  .hero { padding-block: 40px 56px; }
+  .hero-grid { display: grid; gap: 40px; }
+  .hero-text { display: grid; gap: 24px; min-width: 0; }
+  .hero h1 .hl { color: var(--accent); white-space: nowrap; }
+  .lead { font-size: 19px; color: var(--muted); }
+  .lead b { color: var(--fg); font-weight: 500; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .fact {
+    display: grid; gap: 4px; align-content: start;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px;
+    font-size: 17px; font-weight: 500; line-height: 1.35;
+  }
+  .fact.wide { grid-column: 1 / -1; }
+  .fact small { font-size: 14px; font-weight: 400; color: var(--muted); }
+  .cta-row { display: grid; gap: 12px; }
+  .btn {
+    display: flex; justify-content: center; align-items: center;
+    padding: 20px 26px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink);
+    font: 600 17px/1.2 var(--display); text-decoration: none; text-align: center;
+    transition: transform .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .cta-row .muted { text-align: center; font-size: 16px; }
+  .btn:focus-visible, a:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+
+  /* Окно запроса */
+  .prompt {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
+    padding: 16px; display: grid; gap: 16px; min-width: 0;
+  }
+  .prompt-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--muted); }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
+  .formula { display: flex; flex-wrap: wrap; gap: 8px; }
+  .formula span {
+    font-size: 15px; padding: 6px 12px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .formula em { font-style: normal; color: var(--muted); font-size: 15px; align-self: center; }
+  .msg {
+    background: var(--surface-2); border-radius: 14px; padding: 14px;
+    font-size: 17px; line-height: 1.55;
+  }
+  .msg .k { color: var(--accent); }
+  .caret { display: inline-block; width: 2px; height: 1.05em; background: var(--accent); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .reply { display: grid; gap: 10px; font-size: 17px; color: var(--muted); }
+  .reply div { display: flex; gap: 12px; align-items: baseline; }
+  .reply div::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateY(-2px); }
+
+
+  /* Робот-помощник */
+  .robot { display: block; height: auto; }
+  .prompt-wrap { position: relative; padding-top: 96px; min-width: 0; }
+  .robot-peek { position: absolute; top: 0; right: 28px; width: 128px; z-index: 0; animation: bob 4s ease-in-out infinite; }
+  .prompt { position: relative; z-index: 1; }
+  .spark { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 4px; }
+  .sec-head + .part { border-top: 0; padding-top: 0; }
+  .robot-inline { width: 84px; margin-bottom: 4px; }
+  .robot-wave { width: 110px; justify-self: end; margin-bottom: -8px; }
+  @keyframes bob { 50% { transform: translateY(-6px); } }
+
+  /* Раскрывающиеся пункты программы */
+  details.item { padding: 0; display: block; }
+  details.item summary {
+    list-style: none; cursor: pointer; padding: 20px 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  }
+  details.item summary::-webkit-details-marker { display: none; }
+  details.item summary::after {
+    content: "+"; flex: none; width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--accent-soft); color: var(--accent);
+    font: 400 26px/1 var(--body);
+  }
+  details.item[open] summary::after { content: "\2212"; }
+  details.item summary:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; border-radius: 18px; }
+  .item-body { padding: 0 16px 20px; display: grid; gap: 12px; }
+
+
+  /* Анимации */
+  .bot-arm { transform-origin: 112px 132px; animation: wave 1.5s ease-in-out infinite; }
+  .bot-eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
+  .bot-ball { transform-box: fill-box; transform-origin: center; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-16deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-16deg); } }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+  @keyframes pulse { 50% { transform: scale(1.5); } }
+  @keyframes rise { from { transform: translateY(110%) scale(.7); } to { transform: none; } }
+  @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes twinkle { 0%, 100% { transform: scale(.4) rotate(0); opacity: .25; } 50% { transform: scale(1) rotate(90deg); opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255,138,91,.55); } 70%, 100% { box-shadow: 0 0 0 20px rgba(255,138,91,0); } }
+
+  .robot-stage { position: relative; height: 176px; overflow: hidden; border-bottom: 3px solid var(--line); }
+  .robot-rise { position: absolute; left: 50%; bottom: 0; width: 150px; margin-left: -75px; animation: rise 1s cubic-bezier(.34,1.56,.64,1) .4s both; }
+  .robot-hero { width: 150px; animation: bob 4s ease-in-out 1.6s infinite; }
+  .bubble {
+    position: absolute; left: calc(50% - 150px); top: 22px; padding: 8px 14px; border-radius: 16px 16px 4px 16px;
+    background: var(--accent); color: var(--accent-ink); font: 600 16px/1.2 var(--display);
+    transform-origin: 100% 100%; animation: pop .5s cubic-bezier(.34,1.56,.64,1) 1.5s both;
+  }
+  .star { position: absolute; width: 22px; height: 22px; animation: twinkle 2.4s ease-in-out infinite; }
+  .star.s1 { left: calc(50% + 70px); top: 20px; }
+  .star.s2 { left: calc(50% + 100px); top: 78px; width: 14px; height: 14px; animation-delay: .8s; }
+  .star.s3 { left: calc(50% - 110px); top: 100px; width: 16px; height: 16px; animation-delay: 1.5s; }
+  .eyebrow .spark, footer .spark { animation: spin 12s linear infinite; }
+  .cta-row .btn { animation: ring 2.6s ease-out infinite; }
+
+  /* Появление при прокрутке (только если работает JS) */
+  .js .reveal { opacity: 0; transform: translateY(26px); transition: opacity .6s ease, transform .6s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
+  .js .pop { opacity: 0; transform: translateY(50px) scale(.4) rotate(-12deg); }
+  .js .pop.in { opacity: 1; transform: none; transition: opacity .3s ease, transform .8s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Секции */
+  section { padding-block: 56px; border-top: 1px solid var(--line); }
+  .sec-head { display: grid; gap: 14px; margin-bottom: 32px; }
+
+  /* Программа */
+  .part { display: grid; gap: 20px; padding-block: 40px; border-top: 1px solid var(--line); }
+  .part:first-of-type { border-top: 0; padding-top: 0; }
+  .day { padding: 14px 0; border-top: 1px solid var(--line); }
+  .day:first-of-type { border-top: 0; padding-top: 0; }
+  .day + .part { border-top: 0; padding-top: 16px; }
+  .part-label { display: grid; gap: 8px; min-width: 0; }
+  .part-label .num {
+    justify-self: start; padding: 7px 14px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-ink);
+    font: 800 14px/1 var(--display); text-transform: uppercase; letter-spacing: .06em;
+  }
+  .part-label h3 { font-size: clamp(25px, 7vw, 30px); font-weight: 800; line-height: 1.15; }
+  .part-label p { font-size: 18px; color: var(--muted); }
+  .items { display: grid; gap: 14px; }
+  .item {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+    padding: 20px 16px; display: grid; gap: 12px; align-content: start;
+  }
+  .item p { font-size: 18px; color: var(--muted); }
+  .item ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 18px; }
+  .item li { padding-left: 20px; position: relative; color: var(--muted); }
+  .item li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+  .item li b { color: var(--fg); font-weight: 500; }
+  .item.live { background: var(--accent-soft); border-color: rgba(255,138,91,.45); }
+  .chain { display: flex; flex-wrap: wrap; gap: 8px 6px; align-items: center; font-size: 16px; }
+  .chain span { padding: 6px 12px; border-radius: 999px; background: var(--bg); color: var(--fg); }
+  .chain i { font-style: normal; color: var(--accent); }
+
+  /* Результаты */
+  .results { display: grid; list-style: none; margin: 0; padding: 0; }
+  .results li { display: flex; gap: 14px; align-items: baseline; padding-block: 16px; border-bottom: 1px solid var(--line); font-size: 18px; }
+  .results li::before { content: "✓"; color: var(--accent); font-weight: 700; flex: none; font-size: 20px; }
+
+  .two { display: grid; gap: 28px; }
+  .who { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .who li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; font-size: 18px; }
+
+  /* Цена */
+  .price-grid { display: grid; gap: 14px; }
+  .tier { border: 1px solid var(--line); border-radius: 20px; padding: 24px 18px; display: grid; gap: 10px; align-content: start; }
+  .tier.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .tier .label { font: 600 14px/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; }
+  .tier .sum { font: 800 44px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+  .tier .old { text-decoration: line-through; opacity: .6; font-size: 20px; }
+  .tier span:last-child { font-size: 17px; }
+  .signup { margin-top: 32px; display: grid; gap: 18px; }
+  .seats { font: 600 18px/1.4 var(--display); }
+  .contact { display: grid; gap: 10px; font-size: 18px; }
+  .phone {
+    font: 800 clamp(28px, 8.5vw, 36px)/1.1 var(--display);
+    color: var(--accent); text-decoration: none; user-select: all;
+    font-variant-numeric: tabular-nums;
+  }
+
+  footer { padding-block: 40px 56px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret { animation: none; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .js .reveal, .js .pop { opacity: 1; transform: none; }
+    .btn { transition: none; }
+  }
+</style>
+
+<script>document.documentElement.classList.add("js")</script>
+<header class="hero">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="spark" viewBox="0 0 100 100"><g stroke="#ff8a5b" stroke-width="9" stroke-linecap="round"><line x1="50" y1="50" x2="50.0" y2="6.0"/><line x1="50" y1="50" x2="68.0" y2="18.8"/><line x1="50" y1="50" x2="88.1" y2="28.0"/><line x1="50" y1="50" x2="88.0" y2="50.0"/><line x1="50" y1="50" x2="88.1" y2="72.0"/><line x1="50" y1="50" x2="67.5" y2="80.3"/><line x1="50" y1="50" x2="50.0" y2="94.0"/><line x1="50" y1="50" x2="31.0" y2="82.9"/><line x1="50" y1="50" x2="11.9" y2="72.0"/><line x1="50" y1="50" x2="14.0" y2="50.0"/><line x1="50" y1="50" x2="11.9" y2="28.0"/><line x1="50" y1="50" x2="31.0" y2="17.1"/></g></symbol>
+  <symbol id="bot" viewBox="0 0 160 180">
+    <line x1="80" y1="9" x2="80" y2="30" stroke="#ff8a5b" stroke-width="5" stroke-linecap="round"/>
+    <circle class="bot-ball" cx="80" cy="9" r="7" fill="#ff8a5b"/>
+    <rect x="16" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
+    <rect x="128" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
+    <path d="M48 132 Q28 142 26 160" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <g class="bot-arm"><path d="M112 132 Q140 130 144 104" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="144" cy="98" r="9" fill="#ff8a5b"/></g>
+    <rect x="46" y="114" width="68" height="58" rx="20" fill="#ff8a5b"/>
+    <circle cx="80" cy="143" r="11" fill="#1c0f08"/>
+    <circle cx="80" cy="143" r="4.5" fill="#ff8a5b"/>
+    <rect x="28" y="30" width="104" height="80" rx="28" fill="#24211e" stroke="#ff8a5b" stroke-width="4"/>
+    <rect x="40" y="44" width="80" height="52" rx="20" fill="#100f0e"/>
+    <g class="bot-eye"><circle cx="62" cy="67" r="8" fill="#ff8a5b"/><circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/></g>
+    <g class="bot-eye"><circle cx="98" cy="67" r="8" fill="#ff8a5b"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/></g>
+    <path d="M68 81 Q80 92 92 81" stroke="#ff8a5b" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="50" cy="82" r="5" fill="#ff8a5b" opacity=".35"/><circle cx="110" cy="82" r="5" fill="#ff8a5b" opacity=".35"/>
+  </symbol>
+</svg>
+
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <p class="eyebrow"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум Евгении Лугиновой · 14 или 17 октября</p>
+      <h1>Claude — ваш личный <span class="hl">ИИ-помощник</span> в бизнесе и жизни</h1>
+      <p class="lead">Пока одни спорят, заменит ли ИИ людей, другие уже передали ему половину рутины. <b>За одну встречу вы установите Claude, подключите его к своим сервисам и сделаете вживую то, на что обычно уходит неделя работы маркетолога, аналитика и программиста. А ещё соберёте своего ИИ-агента, который останется работать на вас после практикума.</b></p>
+      <div class="facts">
+        <div class="fact"><small>Дата на выбор</small>среда, 14 октября, 16:30</div>
+        <div class="fact"><small>или</small>суббота, 17 октября, 10:00</div>
+        <div class="fact wide"><small>Где</small>адрес пришлю после записи</div>
+        <div class="fact"><small>Длительность</small>около 3,5 часов</div>
+        <div class="fact"><small>Группа</small>всего 4 человека</div>
+      </div>
+      <div class="cta-row">
+        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Записаться в WhatsApp</a>
+        <span class="muted">Предоплата 5 000 ₽</span>
+      </div>
+    </div>
+
+    <div class="robot-stage" aria-hidden="true">
+      <svg class="star s1" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <svg class="star s2" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <svg class="star s3" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <div class="bubble">Привет!</div>
+      <div class="robot-rise"><svg class="robot robot-hero" viewBox="0 0 160 180"><use href="#bot"/></svg></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="program">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Программа</p>
+        <h2>От установки до первых результатов для вашего бизнеса</h2>
+      </div>
+
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 1</span>
+          <h3>Установка</h3>
+          <p>Чтобы ни у кого не осталось «у меня не работает».</p>
+        </div>
+        <div class="items">
+          <details class="item">
+            <summary><h3>Загрузка</h3></summary>
+            <div class="item-body">
+            <p>Скачиваем Claude на компьютер и телефон вместе, шаг за шагом.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Установка и вход</h3></summary>
+            <div class="item-body">
+            <p>Регистрируемся и входим в аккаунт. Не получается — помогу лично.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Оплата подписки</h3></summary>
+            <div class="item-body">
+            <p>Оформляем подписку Claude, чтобы были доступны все возможности практикума, в том числе Claude Code.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 2</span>
+          <h3>Основные настройки и подключения</h3>
+          <p>Claude узнаёт вас и получает доступ к вашим делам.</p>
+        </div>
+        <div class="items">
+          <details class="item">
+            <summary><h3>Основные настройки</h3></summary>
+            <div class="item-body">
+            <p>Как научить Claude «помнить» вас и ваш стиль. Голос, фото, файлы.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Подключаем коннекторы</h3></summary>
+            <div class="item-body">
+            <p>Google Диск, Календарь и Notion. «Что у меня на неделе?», «найди тот документ», «запиши мои идеи» — Claude делает это сам.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 3</span>
+          <h3>Знакомство с Claude: для жизни и для работы</h3>
+          <p>Настраиваем Claude под вашу жизнь и ваш бизнес.</p>
+        </div>
+        <div class="items">
+          <details class="item wide">
+            <summary><h3>Формула запроса, после которой ИИ понимает вас с полуслова</h3></summary>
+            <div class="item-body">
+            <p>Как ставить задачи, чтобы ответы были точными: <b>кто я + задача + контекст + формат</b>. Голос, фото, файлы: как давать Claude материал в любом виде.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Учиться в 10 раз быстрее</h3></summary>
+            <div class="item-body">
+            <ul>
+              <li><b>YouTube → конспект:</b> часовое видео в одну страницу главного</li>
+              <li><b>Лекция, вебинар или встреча → расшифровка → конспект</b> по вашему шаблону: где бесплатно получить текст из аудио и видео</li>
+              <li><b>Книга или PDF → выжимка</b> и ответы на ваши вопросы</li>
+              <li>Сложная тема простыми словами</li>
+            </ul>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Планы без головной боли</h3></summary>
+            <div class="item-body">
+              <p>Маршрут поездки, план переезда или праздника, семейный бюджет — Claude составит и разложит по шагам.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Проекты: Claude, который вас уже знает</h3></summary>
+            <div class="item-body">
+              <p>Отдельное пространство под задачу: кто вы, ваши клиенты, прайс, тон общения и нужные файлы. Каждый новый чат внутри проекта уже знает всё это, и не нужно объяснять заново.</p>
+              <ul>
+                <li><b>«Мой бизнес»:</b> клиенты, прайс, тон общения, ваши материалы</li>
+                <li><b>«Учёба»:</b> все конспекты и материалы курса в одном месте, Claude отвечает по ним</li>
+                <li><b>«Дом и семья»:</b> бюджет, планы, документы</li>
+              </ul>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Маркетолог за 2 минуты</h3></summary>
+            <div class="item-body">
+            <ul>
+              <li><b>Портрет клиента:</b> кто он, чего боится, чего хочет, какие слова его цепляют</li>
+              <li><b>Разбор конкурентов:</b> чем продают, где слабы, какую нишу никто не занял</li>
+              <li><b>Контент-план на месяц</b> с готовыми текстами первых постов</li>
+            </ul>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Из хаоса — в порядок</h3></summary>
+            <div class="item-body">
+            <ul>
+              <li><b>Голосовое → коммерческое предложение:</b> наговорите мысли как есть, получите готовое КП</li>
+              <li><b>Созвон → протокол:</b> расшифровка, решения и задачи по итогам встречи</li>
+            </ul>
+            </div>
+          </details>
+          <details class="item wide live">
+            <summary><h3>Скиллы и свой ИИ-агент</h3></summary>
+            <div class="item-body">
+            <p>Сохраняем удачный способ работы как навык, и Claude применяет его сам: «Пост в моём стиле», «Конспект по моему шаблону», «Ответ клиенту».</p>
+            <div class="chain">
+              <span>проект</span><i>+</i><span>инструкции</span><i>+</i><span>подключения</span><i>+</i><span>скиллы</span><i>=</i><span>агент</span>
+            </div>
+            <p>Каждый собирает своего агента под свою задачу и уходит с работающим помощником.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+
+      <div class="part">
+        <div class="part-label">
+          <svg class="robot robot-inline pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+          <span class="num">Блок 4</span>
+          <h3>Claude Code</h3>
+          <p>Создаём то, что раньше делал программист. Каждый выбирает своё.</p>
+        </div>
+        <div class="items">
+          <details class="item">
+            <summary><h3>Сайт</h3></summary>
+            <div class="item-body">
+            <p>Ваш лендинг по ссылке за 10 минут, без знания кода: визитка, страница услуги или продукта.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Интерактивная презентация</h3></summary>
+            <div class="item-body">
+            <p>Презентация для клиентов или партнёров, которую можно листать и открывать по ссылке.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Видеопрезентация</h3></summary>
+            <div class="item-body">
+            <p>Короткий ролик о вашем бизнесе или продукте.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Или своё</h3></summary>
+            <div class="item-body">
+            <ul>
+              <li><b>Квиз для клиентов:</b> подбирает продукт и собирает заявки</li>
+              <li><b>Калькулятор:</b> себестоимость, наценка, точка безубыточности</li>
+              <li><b>Анализ продаж из Excel:</b> что продаётся, а что лежит мёртвым грузом</li>
+            </ul>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Блок 5</span>
+          <h3>Claude в Chrome</h3>
+          <p>Claude сам заходит в интернет и работает за вас.</p>
+        </div>
+        <div class="items">
+          <details class="item">
+            <summary><h3>Установка расширения</h3></summary>
+            <div class="item-body">
+            <p>Ставим расширение Claude для Chrome и разрешаем ему работать с сайтами. Claude открывает сайты и соцсети в вашем браузере и работает за вас.</p>
+            </div>
+          </details>
+          <details class="item">
+            <summary><h3>Что он умеет</h3></summary>
+            <div class="item-body">
+            <ul>
+              <li><b>Аудит Инстаграм-страницы</b>, своей или конкурента: что цепляет, что отталкивает, что исправить</li>
+              <li>Сбор информации с нескольких сайтов в одну таблицу</li>
+            </ul>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="part">
+        <div class="part-label">
+          <span class="num">Финал</span>
+          <h3>Ваш личный план</h3>
+        </div>
+        <div class="items">
+          <details class="item wide">
+            <summary><h3>Что передать Claude уже завтра</h3></summary>
+            <div class="item-body">
+            <p>Разбираем задачи каждого — в жизни и в работе. Отвечаю на все вопросы.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Результат</p>
+        <h2>С чем вы уйдёте</h2>
+      </div>
+      <ul class="results">
+        <li>Claude, установленный и настроенный на компьютере и телефоне</li>
+        <li>Подключённые Google Диск, Календарь и Notion</li>
+        <li>Портрет клиента и контент-план для вашего бизнеса</li>
+        <li>Свои проекты в Claude: для бизнеса и для жизни</li>
+        <li>Скиллы под ваши задачи и собственный ИИ-агент</li>
+        <li>Свой сайт, интерактивная презентация или видео, созданные в Claude Code</li>
+        <li>Расширение Claude для Chrome, установленное и настроенное</li>
+        <li>Личный план, что делегировать ИИ</li>
+        <li>Чат поддержки в течение недели после практикума</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="who">
+    <div class="wrap two">
+      <div class="sec-head" style="margin-bottom:0">
+        <p class="eyebrow">Для кого</p>
+        <h2>Технические знания не нужны</h2>
+        <p class="muted">Если вы умеете пользоваться телефоном и почтой, вы справитесь.</p>
+      </div>
+      <ul class="who">
+        <li>Предприниматели и владельцы бизнеса</li>
+        <li>Маркетологи, SMM-специалисты, таргетологи</li>
+        <li>Эксперты, наставники, блогеры</li>
+        <li>Все, кто хочет, чтобы ИИ экономил время и в работе, и в жизни</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="bring">
+    <div class="wrap two">
+      <div class="sec-head" style="margin-bottom:0">
+        <p class="eyebrow">Подготовка</p>
+        <h2>Что взять с собой</h2>
+      </div>
+      <div style="display:grid;gap:14px">
+        <p>Ноутбук с зарядкой, телефон, доступ к своей почте Google и браузер Google Chrome на ноутбуке.</p>
+        <p class="muted">За пару дней до встречи пришлю памятку, как подготовиться, чтобы всё установилось быстро.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="price">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="eyebrow">Стоимость</p>
+        <h2>Участие в практикуме</h2>
+      </div>
+      <div class="price-grid">
+        <div class="tier main">
+          <span class="label">Практикум целиком</span>
+          <span class="sum">5 000 ₽</span>
+          <span>Около 3,5 часов практики и неделя поддержки в чате</span>
+        </div>
+      </div>
+      <div class="signup">
+        <svg class="robot robot-wave pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+        <p class="seats">Всего 4 места: группа маленькая, чтобы я успела помочь каждому.</p>
+        <p class="muted">Выберите среду или субботу и напишите мне в WhatsApp. Место закрепляется предоплатой 5 000 ₽, я подскажу, как её внести.</p>
+        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Написать в WhatsApp</a>
+        <div class="contact">
+          <p class="muted">Или позвоните:</p>
+          <a class="phone" href="tel:+79248604162">8 924 860-41-62</a>
+          <p class="muted">Место встречи пришлю в личном сообщении после записи.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</div>
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  if (!('IntersectionObserver' in window)) { root.classList.remove('js'); return; }
+  var items = document.querySelectorAll('.part-label, details.item, .results li, .tier, .signup > *:not(.pop)');
+  items.forEach(function (el, i) { el.classList.add('reveal'); el.style.transitionDelay = (i % 3) * 80 + 'ms'; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal, .pop').forEach(function (el) { io.observe(el); });
+})();
+</script>
+
