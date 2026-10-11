@@ -103,7 +103,7 @@
   .spark { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 4px; }
   .sec-head + .part { border-top: 0; padding-top: 0; }
   .robot-inline { width: 84px; margin-bottom: 4px; }
-  .robot-wave { width: 110px; justify-self: end; margin-bottom: -8px; animation: bob 4s ease-in-out infinite; }
+  .robot-wave { width: 110px; justify-self: end; margin-bottom: -8px; }
   @keyframes bob { 50% { transform: translateY(-6px); } }
 
   /* Раскрывающиеся пункты программы */
@@ -121,7 +121,41 @@
   details.item[open] summary::after { content: "\2212"; }
   details.item summary:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; border-radius: 18px; }
   .item-body { padding: 0 16px 20px; display: grid; gap: 12px; }
-  .robot-hero { width: 150px; margin-inline: auto; animation: bob 4s ease-in-out infinite; }
+
+
+  /* Анимации */
+  .bot-arm { transform-origin: 112px 132px; animation: wave 1.5s ease-in-out infinite; }
+  .bot-eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
+  .bot-ball { transform-box: fill-box; transform-origin: center; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-16deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-16deg); } }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+  @keyframes pulse { 50% { transform: scale(1.5); } }
+  @keyframes rise { from { transform: translateY(110%) scale(.7); } to { transform: none; } }
+  @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes twinkle { 0%, 100% { transform: scale(.4) rotate(0); opacity: .25; } 50% { transform: scale(1) rotate(90deg); opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255,138,91,.55); } 70%, 100% { box-shadow: 0 0 0 20px rgba(255,138,91,0); } }
+
+  .robot-stage { position: relative; height: 176px; overflow: hidden; border-bottom: 3px solid var(--line); }
+  .robot-rise { position: absolute; left: 50%; bottom: 0; width: 150px; margin-left: -75px; animation: rise 1s cubic-bezier(.34,1.56,.64,1) .4s both; }
+  .robot-hero { width: 150px; animation: bob 4s ease-in-out 1.6s infinite; }
+  .bubble {
+    position: absolute; left: calc(50% - 150px); top: 22px; padding: 8px 14px; border-radius: 16px 16px 4px 16px;
+    background: var(--accent); color: var(--accent-ink); font: 600 16px/1.2 var(--display);
+    transform-origin: 100% 100%; animation: pop .5s cubic-bezier(.34,1.56,.64,1) 1.5s both;
+  }
+  .star { position: absolute; width: 22px; height: 22px; animation: twinkle 2.4s ease-in-out infinite; }
+  .star.s1 { left: calc(50% + 70px); top: 20px; }
+  .star.s2 { left: calc(50% + 100px); top: 78px; width: 14px; height: 14px; animation-delay: .8s; }
+  .star.s3 { left: calc(50% - 110px); top: 100px; width: 16px; height: 16px; animation-delay: 1.5s; }
+  .eyebrow .spark, footer .spark { animation: spin 12s linear infinite; }
+  .cta-row .btn { animation: ring 2.6s ease-out infinite; }
+
+  /* Появление при прокрутке (только если работает JS) */
+  .js .reveal { opacity: 0; transform: translateY(26px); transition: opacity .6s ease, transform .6s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
+  .js .pop { opacity: 0; transform: translateY(50px) scale(.4) rotate(-12deg); }
+  .js .pop.in { opacity: 1; transform: none; transition: opacity .3s ease, transform .8s cubic-bezier(.34,1.56,.64,1); }
 
   /* Секции */
   section { padding-block: 56px; border-top: 1px solid var(--line); }
@@ -185,29 +219,32 @@
   footer { padding-block: 40px 56px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
 
   @media (prefers-reduced-motion: reduce) {
-    .caret, .robot-peek, .robot-wave, .robot-hero { animation: none; }
+    .caret { animation: none; }
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .js .reveal, .js .pop { opacity: 1; transform: none; }
     .btn { transition: none; }
   }
 </style>
 
+<script>document.documentElement.classList.add("js")</script>
 <header class="hero">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <symbol id="spark" viewBox="0 0 100 100"><g stroke="#ff8a5b" stroke-width="9" stroke-linecap="round"><line x1="50" y1="50" x2="50.0" y2="6.0"/><line x1="50" y1="50" x2="68.0" y2="18.8"/><line x1="50" y1="50" x2="88.1" y2="28.0"/><line x1="50" y1="50" x2="88.0" y2="50.0"/><line x1="50" y1="50" x2="88.1" y2="72.0"/><line x1="50" y1="50" x2="67.5" y2="80.3"/><line x1="50" y1="50" x2="50.0" y2="94.0"/><line x1="50" y1="50" x2="31.0" y2="82.9"/><line x1="50" y1="50" x2="11.9" y2="72.0"/><line x1="50" y1="50" x2="14.0" y2="50.0"/><line x1="50" y1="50" x2="11.9" y2="28.0"/><line x1="50" y1="50" x2="31.0" y2="17.1"/></g></symbol>
   <symbol id="bot" viewBox="0 0 160 180">
     <line x1="80" y1="9" x2="80" y2="30" stroke="#ff8a5b" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="80" cy="9" r="7" fill="#ff8a5b"/>
+    <circle class="bot-ball" cx="80" cy="9" r="7" fill="#ff8a5b"/>
     <rect x="16" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
     <rect x="128" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
     <path d="M48 132 Q28 142 26 160" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <path d="M112 132 Q140 130 144 104" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <circle cx="144" cy="98" r="9" fill="#ff8a5b"/>
+    <g class="bot-arm"><path d="M112 132 Q140 130 144 104" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="144" cy="98" r="9" fill="#ff8a5b"/></g>
     <rect x="46" y="114" width="68" height="58" rx="20" fill="#ff8a5b"/>
     <circle cx="80" cy="143" r="11" fill="#1c0f08"/>
     <circle cx="80" cy="143" r="4.5" fill="#ff8a5b"/>
     <rect x="28" y="30" width="104" height="80" rx="28" fill="#24211e" stroke="#ff8a5b" stroke-width="4"/>
     <rect x="40" y="44" width="80" height="52" rx="20" fill="#100f0e"/>
-    <circle cx="62" cy="67" r="8" fill="#ff8a5b"/><circle cx="98" cy="67" r="8" fill="#ff8a5b"/>
-    <circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/>
+    <g class="bot-eye"><circle cx="62" cy="67" r="8" fill="#ff8a5b"/><circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/></g>
+    <g class="bot-eye"><circle cx="98" cy="67" r="8" fill="#ff8a5b"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/></g>
     <path d="M68 81 Q80 92 92 81" stroke="#ff8a5b" stroke-width="4" fill="none" stroke-linecap="round"/>
     <circle cx="50" cy="82" r="5" fill="#ff8a5b" opacity=".35"/><circle cx="110" cy="82" r="5" fill="#ff8a5b" opacity=".35"/>
   </symbol>
@@ -231,7 +268,13 @@
       </div>
     </div>
 
-    <svg class="robot robot-hero" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+    <div class="robot-stage" aria-hidden="true">
+      <svg class="star s1" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <svg class="star s2" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <svg class="star s3" viewBox="0 0 100 100"><use href="#spark"/></svg>
+      <div class="bubble">Привет!</div>
+      <div class="robot-rise"><svg class="robot robot-hero" viewBox="0 0 160 180"><use href="#bot"/></svg></div>
+    </div>
   </div>
 </header>
 
@@ -370,7 +413,7 @@
 
       <div class="part">
         <div class="part-label">
-          <svg class="robot robot-inline" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+          <svg class="robot robot-inline pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
           <span class="num">Блок 4</span>
           <h3>Claude Code</h3>
           <p>Создаём то, что раньше делал программист. Каждый выбирает своё.</p>
@@ -512,7 +555,7 @@
         </div>
       </div>
       <div class="signup">
-        <svg class="robot robot-wave" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+        <svg class="robot robot-wave pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
         <p class="seats">Всего 4 места: группа маленькая, чтобы я успела помочь каждому.</p>
         <p class="muted">Выберите среду или субботу и напишите мне в WhatsApp. Место закрепляется предоплатой 5 000 ₽, я подскажу, как её внести.</p>
         <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Написать в WhatsApp</a>
@@ -529,3 +572,19 @@
 <footer>
   <div class="wrap"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</div>
 </footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  if (!('IntersectionObserver' in window)) { root.classList.remove('js'); return; }
+  var items = document.querySelectorAll('.part-label, details.item, .results li, .tier, .signup > *:not(.pop)');
+  items.forEach(function (el, i) { el.classList.add('reveal'); el.style.transitionDelay = (i % 3) * 80 + 'ms'; });
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal, .pop').forEach(function (el) { io.observe(el); });
+})();
+</script>
+
