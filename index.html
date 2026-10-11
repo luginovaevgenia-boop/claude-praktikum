@@ -1,590 +1,305 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><script>document.documentElement.classList.add("js")</script><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Практикум по Claude</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Roboto:wght@400;500;700&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&display=swap">
 <style>
-  /* Layout: мобильная колонка везде (на компьютере — по центру); крупный текст, карточки одна под другой */
-  :root {
-    --bg: #100f0e;
-    --surface: #1b1917;
-    --surface-2: #24211e;
-    --line: #3a352f;
-    --fg: #f6f1ea;
-    --muted: #c9bfb3;
-    --accent: #ff8a5b;
-    --accent-soft: rgba(255, 138, 91, .14);
-    --accent-ink: #1c0f08;
-    --display: "Unbounded", "Arial Black", system-ui, sans-serif;
-    --body: "Roboto", "Segoe UI", system-ui, -apple-system, sans-serif;
-    color-scheme: dark;
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font: 400 18px/1.6 var(--body);
-    -webkit-font-smoothing: antialiased;
-  }
-  .wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; }
-  @media (max-width: 380px) { .wrap { padding-inline: 16px; } }
+:root{--bg:#efefed;--ink:#0d0d0d;--lime:#e4f25a;--gray:#d9d9d6;--card:#fff;--muted:#6b6b68;--r:30px;
+--f:"Onest","Segoe UI",system-ui,sans-serif;color-scheme:light}
+*{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.5 var(--f);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:12px}
+h1,h2,h3,p{margin:0} h1,h2,h3{font-weight:400;letter-spacing:-.02em;text-wrap:balance}
+a{color:inherit}
+.chip{display:inline-block;padding:6px 14px;border-radius:999px;background:var(--lime);color:var(--ink);font:500 13px/1.2 var(--f);letter-spacing:.02em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:16px 26px;border-radius:999px;background:var(--lime);color:var(--ink);font:500 16px/1 var(--f);text-decoration:none;border:0}
+.btn.dark{background:var(--ink);color:#fff} .btn.line{background:transparent;border:1.5px solid var(--ink)}
+.btn .ar{width:20px;height:20px}
+/* nav */
+.nav{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0 14px}
+.nav .pill{padding:9px 14px;border-radius:999px;background:#e3e3e0;font:400 13px/1 var(--f);text-decoration:none;white-space:nowrap}
+.nav .left,.nav .right{display:flex;gap:6px;flex:1} .nav .right{justify-content:flex-end}
+.nav .logo{display:flex;align-items:center;gap:8px;padding:12px 20px;border-radius:999px;background:var(--ink);color:#fff;font:500 14px/1 var(--f)}
+.nav .logo svg{width:18px;height:18px;color:var(--lime)}
+.nav .right .line{border:1.5px solid var(--ink);background:transparent}
+@media(max-width:760px){.nav .left{display:none} .nav .right .pill:first-child{display:none} .nav .right{flex:0} .nav{justify-content:space-between}}
+/* hero */
+.hero{display:grid;gap:12px;grid-template-columns:1.05fr 1fr}
+@media(max-width:860px){.hero{grid-template-columns:1fr}}
+.hero-a{background:var(--ink);color:#fff;border-radius:var(--r);padding:44px 28px 30px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:22px;min-height:470px;justify-content:center}
+.hero-a .brand{display:flex;align-items:center;gap:8px;font-size:13px;color:#cfcfcb} .hero-a .brand svg{width:16px;height:16px;color:var(--lime)}
+.hero-a h1{font-size:clamp(34px,6.2vw,52px);line-height:1.12;color:var(--lime);font-weight:300}
+.hero-a h1 b{color:#fff;font-weight:300}
+.hero-a .sub{font-size:14px;color:#bdbdb8;max-width:34ch}
+.hero-a .bot-wrap{width:96px;margin-bottom:-6px}
+.hero-b{position:relative;border-radius:var(--r);overflow:hidden;min-height:470px;background:radial-gradient(120% 90% at 30% 20%,#9a9a9a 0%,#4a4a4a 38%,#141414 100%);display:flex;flex-direction:column;justify-content:space-between;padding:16px}
+.hero-b svg.mesh{position:absolute;inset:0;width:100%;height:100%}
+.hero-b>*:not(.mesh){position:relative}
+.glass{display:flex;align-items:center;gap:10px;width:max-content;max-width:100%;padding:10px 16px 10px 10px;border-radius:20px;background:rgba(20,20,20,.55);backdrop-filter:blur(6px);color:#fff;font-size:13px;line-height:1.25;border:1px solid rgba(255,255,255,.18)}
+.glass .av{width:46px;height:46px;border-radius:14px;background:#0d0d0d;display:grid;place-items:center} .glass .av svg{width:38px;height:38px}
+.hero-b .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.dots{display:flex;gap:8px} .dots i{width:36px;height:36px;border-radius:50%;background:rgba(20,20,20,.55);border:1px solid rgba(255,255,255,.2);display:grid;place-items:center;font-style:normal;color:#fff;font-size:15px} .dots i.l{background:var(--lime);color:var(--ink)}
+.hero-b::after{content:"";position:absolute;left:0;right:0;bottom:0;height:130px;background:linear-gradient(transparent,rgba(0,0,0,.7));pointer-events:none} .hero-b .cap{z-index:2;align-self:flex-end;max-width:210px;font-size:12.5px;line-height:1.35;color:#e6e6e2;text-align:right}
+/* statement */
+.statement{position:relative;text-align:center;padding:70px 20px 56px;overflow:hidden}
+.statement h2{font-size:clamp(30px,5vw,46px);line-height:1.15;font-weight:300;max-width:16ch;margin:0 auto 16px}
+.statement p{max-width:44ch;margin:0 auto 24px;color:#444;font-size:15px}
+.statement{padding-top:56px} .statement>*:not(.chrome){position:relative;z-index:1} .statement .chrome{position:absolute;width:112px;top:10px;filter:drop-shadow(0 10px 12px rgba(0,0,0,.25))} .statement .cl{left:6px;transform:rotate(-14deg)} .statement .cr{right:6px;transform:rotate(14deg)}
+@media(min-width:860px){.statement{padding-top:70px} .statement .chrome{width:250px;top:20px} .statement .cl{left:40px;top:40px} .statement .cr{right:40px}}
+.chrome{display:block;height:auto;overflow:visible}
+/* facts pills */
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:760px){.facts{grid-template-columns:1fr 1fr}}
+.fact{border-radius:var(--r);min-height:120px;padding:18px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:4px;font-size:19px;line-height:1.2;position:relative;overflow:hidden}
+.fact small{font-size:12px;color:inherit;opacity:.65;letter-spacing:.06em;text-transform:uppercase}
+.fact.f1{background:var(--lime)} .fact.f2{background:#fff} .fact.f3{background:var(--ink);color:#fff} .fact.f4{background:var(--gray)}
+/* sections */
+.sec{padding:64px 6px 8px} .sec h2{font-size:clamp(28px,4.4vw,40px);font-weight:400;margin-bottom:22px}
+.bgrid{display:grid;gap:12px;grid-template-columns:repeat(3,1fr)}
+@media(max-width:980px){.bgrid{grid-template-columns:1fr 1fr}} @media(max-width:640px){.bgrid{grid-template-columns:1fr}}
+.bcard{border-radius:var(--r);padding:12px 12px 14px;display:flex;flex-direction:column;gap:14px}
+.bcard.dark{background:var(--ink);color:#fff} .bcard.lime{background:var(--lime)} .bcard.gray{background:var(--gray)}
+.bart{height:150px;border-radius:22px;overflow:hidden;display:grid;place-items:center;background:rgba(255,255,255,.55)}
+.bcard.dark .bart{background:#1d1d1d} .bcard.lime .bart{background:#d4e44a}
+.bart .art{height:128px;width:auto;max-width:82%;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(0,0,0,.28))} .bart .a-flower{height:122px}
+.bhead{padding:2px 8px;display:grid;gap:8px;justify-items:start}
+.bhead h3{font-size:25px;line-height:1.1} .bhead p{font-size:14px;opacity:.7;line-height:1.35}
+.bcard.dark .chip{background:var(--lime)} .bcard.lime .chip,.bcard.gray .chip{background:var(--ink);color:#fff}
+.rows{display:grid;gap:6px;padding:0 4px}
+.row{border-radius:18px;background:rgba(255,255,255,.7);color:var(--ink)} .bcard.dark .row{background:#f1f1ef}
+.row summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;font-size:15px;line-height:1.25;font-weight:500}
+.row summary::-webkit-details-marker{display:none}
+.row summary i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--ink);position:relative}
+.row summary i::before,.row summary i::after{content:"";position:absolute;left:50%;top:50%;width:11px;height:1.8px;background:#fff;transform:translate(-50%,-50%)}
+.row summary i::after{transform:translate(-50%,-50%) rotate(90deg);transition:transform .2s}
+.row[open] summary i::after{transform:translate(-50%,-50%) rotate(0)}
+.row-body{padding:0 14px 14px;display:grid;gap:8px;font-size:14px;line-height:1.45;color:#333}
+.row-body ul{margin:0;padding:0;list-style:none;display:grid;gap:7px} .row-body li{padding-left:16px;position:relative} .row-body li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.row-body .chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center} .row-body .chain span{padding:4px 10px;border-radius:999px;background:var(--lime)} .row-body .chain i{font-style:normal}
+/* dates table */
+.table{background:#fff;border-radius:var(--r);padding:8px 22px}
+.trow{display:grid;grid-template-columns:1.3fr 1fr 1.2fr 44px;gap:14px;align-items:center;padding:20px 0;border-bottom:1px solid #e2e2df} .trow:last-child{border:0}
+.trow.h{padding:14px 0 8px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.trow b{font-weight:400;font-size:21px} .trow .go{width:44px;height:44px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;text-decoration:none} .trow .go svg{width:18px;height:18px}
+@media(max-width:640px){.trow{grid-template-columns:1fr 44px} .trow>*:nth-child(2),.trow>*:nth-child(3){grid-column:1;font-size:14px;color:var(--muted)} .trow .go{grid-column:2;grid-row:1/4;align-self:center} .trow.h{display:none}}
+/* results + who */
+.two{display:grid;gap:12px;grid-template-columns:1.2fr 1fr} @media(max-width:860px){.two{grid-template-columns:1fr}}
+.box{border-radius:var(--r);padding:26px 24px} .box.w{background:#fff} .box.g{background:var(--gray)}
+.box h3{font-size:26px;margin-bottom:14px}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:12px;font-size:16px}
+.checks li{display:flex;gap:12px;align-items:flex-start} .checks li::before{content:"";flex:none;width:22px;height:22px;border-radius:50%;background:var(--lime) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='%230d0d0d' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") center/16px no-repeat;margin-top:1px}
+.tags{display:flex;flex-wrap:wrap;gap:8px} .tags span{padding:10px 16px;border-radius:999px;background:#fff;font-size:15px}
+/* price */
+.price{position:relative;overflow:hidden;background:var(--ink);color:#fff;border-radius:var(--r);padding:38px 26px;display:grid;gap:16px;justify-items:start}
+.price .sum{font-size:clamp(54px,11vw,92px);line-height:1;font-weight:300;color:var(--lime)}
+.price p{color:#c9c9c4;max-width:46ch;font-size:15px}
+.price .row2{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.price .phone{font-size:22px;color:#fff;text-decoration:none}
+.price{padding-bottom:150px} .price .ex{position:absolute;right:22px;bottom:14px;height:150px;width:auto;transform:rotate(10deg);filter:drop-shadow(0 8px 12px rgba(0,0,0,.5))} @media(min-width:760px){.price{padding-bottom:38px} .price .ex{height:240px;right:60px;top:50%;bottom:auto;margin-top:-120px}}
+.price .bot{position:absolute;right:18px;top:18px;width:78px} @media(min-width:760px){.price .bot{display:none}}
+footer{padding:26px 8px 40px;color:var(--muted);font-size:14px;display:flex;gap:8px;align-items:center} footer svg{width:16px;height:16px;color:var(--ink)}
+/* bot anim */
+.bot-arm{transform-origin:112px 132px;animation:wave 1.5s ease-in-out infinite} .bot-eye{transform-box:fill-box;transform-origin:center;animation:blink 4.5s infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}25%{transform:rotate(-16deg)}50%{transform:rotate(10deg)}75%{transform:rotate(-16deg)}}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
 
-  h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
-  h1 { font-weight: 800; font-size: clamp(32px, 9vw, 46px); line-height: 1.1; }
-  h2 { font-weight: 800; font-size: clamp(26px, 7vw, 34px); line-height: 1.15; }
-  h3 { font-weight: 600; font-size: 21px; line-height: 1.3; }
-  p { margin: 0; }
-  .eyebrow {
-    font: 600 14px/1.3 var(--display);
-    letter-spacing: .1em; text-transform: uppercase; color: var(--accent);
-  }
-  .muted { color: var(--muted); }
-  .fill { color: var(--accent); border-bottom: 1px dashed var(--accent); }
-
-  /* Hero */
-  .hero { padding-block: 40px 56px; }
-  .hero-grid { display: grid; gap: 40px; }
-  .hero-text { display: grid; gap: 24px; min-width: 0; }
-  .hero h1 .hl { color: var(--accent); white-space: nowrap; }
-  .lead { font-size: 19px; color: var(--muted); }
-  .lead b { color: var(--fg); font-weight: 500; }
-  .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .fact {
-    display: grid; gap: 4px; align-content: start;
-    padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px;
-    font-size: 17px; font-weight: 500; line-height: 1.35;
-  }
-  .fact.wide { grid-column: 1 / -1; }
-  .fact small { font-size: 14px; font-weight: 400; color: var(--muted); }
-  .cta-row { display: grid; gap: 12px; }
-  .btn {
-    display: flex; justify-content: center; align-items: center;
-    padding: 20px 26px; border-radius: 999px;
-    background: var(--accent); color: var(--accent-ink);
-    font: 600 17px/1.2 var(--display); text-decoration: none; text-align: center;
-    transition: transform .15s ease;
-  }
-  .btn:hover { transform: translateY(-2px); }
-  .cta-row .muted { text-align: center; font-size: 16px; }
-  .btn:focus-visible, a:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
-
-  /* Окно запроса */
-  .prompt {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
-    padding: 16px; display: grid; gap: 16px; min-width: 0;
-  }
-  .prompt-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; color: var(--muted); }
-  .dots { display: flex; gap: 6px; }
-  .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); display: block; }
-  .formula { display: flex; flex-wrap: wrap; gap: 8px; }
-  .formula span {
-    font-size: 15px; padding: 6px 12px; border-radius: 999px;
-    background: var(--accent-soft); color: var(--accent);
-  }
-  .formula em { font-style: normal; color: var(--muted); font-size: 15px; align-self: center; }
-  .msg {
-    background: var(--surface-2); border-radius: 14px; padding: 14px;
-    font-size: 17px; line-height: 1.55;
-  }
-  .msg .k { color: var(--accent); }
-  .caret { display: inline-block; width: 2px; height: 1.05em; background: var(--accent); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .reply { display: grid; gap: 10px; font-size: 17px; color: var(--muted); }
-  .reply div { display: flex; gap: 12px; align-items: baseline; }
-  .reply div::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateY(-2px); }
-
-
-  /* Робот-помощник */
-  .robot { display: block; height: auto; }
-  .prompt-wrap { position: relative; padding-top: 96px; min-width: 0; }
-  .robot-peek { position: absolute; top: 0; right: 28px; width: 128px; z-index: 0; animation: bob 4s ease-in-out infinite; }
-  .prompt { position: relative; z-index: 1; }
-  .spark { width: 1.1em; height: 1.1em; vertical-align: -.2em; margin-right: 4px; }
-  .sec-head + .part { border-top: 0; padding-top: 0; }
-  .robot-inline { width: 84px; margin-bottom: 4px; }
-  .robot-wave { width: 110px; justify-self: end; margin-bottom: -8px; }
-  @keyframes bob { 50% { transform: translateY(-6px); } }
-
-  /* Раскрывающиеся пункты программы */
-  details.item { padding: 0; display: block; }
-  details.item summary {
-    list-style: none; cursor: pointer; padding: 20px 16px;
-    display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  }
-  details.item summary::-webkit-details-marker { display: none; }
-  details.item summary::after {
-    content: "+"; flex: none; width: 36px; height: 36px; border-radius: 50%;
-    display: grid; place-items: center; background: var(--accent-soft); color: var(--accent);
-    font: 400 26px/1 var(--body);
-  }
-  details.item[open] summary::after { content: "\2212"; }
-  details.item summary:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; border-radius: 18px; }
-  .item-body { padding: 0 16px 20px; display: grid; gap: 12px; }
-
-
-  /* Анимации */
-  .bot-arm { transform-origin: 112px 132px; animation: wave 1.5s ease-in-out infinite; }
-  .bot-eye { transform-box: fill-box; transform-origin: center; animation: blink 4.5s infinite; }
-  .bot-ball { transform-box: fill-box; transform-origin: center; animation: pulse 1.6s ease-in-out infinite; }
-  @keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-16deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-16deg); } }
-  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
-  @keyframes pulse { 50% { transform: scale(1.5); } }
-  @keyframes rise { from { transform: translateY(110%) scale(.7); } to { transform: none; } }
-  @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-  @keyframes twinkle { 0%, 100% { transform: scale(.4) rotate(0); opacity: .25; } 50% { transform: scale(1) rotate(90deg); opacity: 1; } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255,138,91,.55); } 70%, 100% { box-shadow: 0 0 0 20px rgba(255,138,91,0); } }
-
-  .robot-stage { position: relative; height: 176px; overflow: hidden; border-bottom: 3px solid var(--line); }
-  .robot-rise { position: absolute; left: 50%; bottom: 0; width: 150px; margin-left: -75px; animation: rise 1s cubic-bezier(.34,1.56,.64,1) .4s both; }
-  .robot-hero { width: 150px; animation: bob 4s ease-in-out 1.6s infinite; }
-  .bubble {
-    position: absolute; left: calc(50% - 150px); top: 22px; padding: 8px 14px; border-radius: 16px 16px 4px 16px;
-    background: var(--accent); color: var(--accent-ink); font: 600 16px/1.2 var(--display);
-    transform-origin: 100% 100%; animation: pop .5s cubic-bezier(.34,1.56,.64,1) 1.5s both;
-  }
-  .star { position: absolute; width: 22px; height: 22px; animation: twinkle 2.4s ease-in-out infinite; }
-  .star.s1 { left: calc(50% + 70px); top: 20px; }
-  .star.s2 { left: calc(50% + 100px); top: 78px; width: 14px; height: 14px; animation-delay: .8s; }
-  .star.s3 { left: calc(50% - 110px); top: 100px; width: 16px; height: 16px; animation-delay: 1.5s; }
-  .eyebrow .spark, footer .spark { animation: spin 12s linear infinite; }
-  .cta-row .btn { animation: ring 2.6s ease-out infinite; }
-
-  /* Появление при прокрутке (только если работает JS) */
-  .js .reveal { opacity: 0; transform: translateY(26px); transition: opacity .6s ease, transform .6s ease; }
-  .js .reveal.in { opacity: 1; transform: none; }
-  .js .pop { opacity: 0; transform: translateY(50px) scale(.4) rotate(-12deg); }
-  .js .pop.in { opacity: 1; transform: none; transition: opacity .3s ease, transform .8s cubic-bezier(.34,1.56,.64,1); }
-
-  /* Секции */
-  section { padding-block: 56px; border-top: 1px solid var(--line); }
-  .sec-head { display: grid; gap: 14px; margin-bottom: 32px; }
-
-  /* Программа */
-  .part { display: grid; gap: 20px; padding-block: 40px; border-top: 1px solid var(--line); }
-  .part:first-of-type { border-top: 0; padding-top: 0; }
-  .day { padding: 14px 0; border-top: 1px solid var(--line); }
-  .day:first-of-type { border-top: 0; padding-top: 0; }
-  .day + .part { border-top: 0; padding-top: 16px; }
-  .part-label { display: grid; gap: 8px; min-width: 0; }
-  .part-label .num {
-    justify-self: start; padding: 7px 14px; border-radius: 999px;
-    background: var(--accent); color: var(--accent-ink);
-    font: 800 14px/1 var(--display); text-transform: uppercase; letter-spacing: .06em;
-  }
-  .part-label h3 { font-size: clamp(25px, 7vw, 30px); font-weight: 800; line-height: 1.15; }
-  .part-label p { font-size: 18px; color: var(--muted); }
-  .items { display: grid; gap: 14px; }
-  .item {
-    background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
-    padding: 20px 16px; display: grid; gap: 12px; align-content: start;
-  }
-  .item p { font-size: 18px; color: var(--muted); }
-  .item ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 18px; }
-  .item li { padding-left: 20px; position: relative; color: var(--muted); }
-  .item li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
-  .item li b { color: var(--fg); font-weight: 500; }
-  .item.live { background: var(--accent-soft); border-color: rgba(255,138,91,.45); }
-  .chain { display: flex; flex-wrap: wrap; gap: 8px 6px; align-items: center; font-size: 16px; }
-  .chain span { padding: 6px 12px; border-radius: 999px; background: var(--bg); color: var(--fg); }
-  .chain i { font-style: normal; color: var(--accent); }
-
-  /* Результаты */
-  .results { display: grid; list-style: none; margin: 0; padding: 0; }
-  .results li { display: flex; gap: 14px; align-items: baseline; padding-block: 16px; border-bottom: 1px solid var(--line); font-size: 18px; }
-  .results li::before { content: "✓"; color: var(--accent); font-weight: 700; flex: none; font-size: 20px; }
-
-  .two { display: grid; gap: 28px; }
-  .who { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-  .who li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; font-size: 18px; }
-
-  /* Цена */
-  .price-grid { display: grid; gap: 14px; }
-  .tier { border: 1px solid var(--line); border-radius: 20px; padding: 24px 18px; display: grid; gap: 10px; align-content: start; }
-  .tier.main { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  .tier .label { font: 600 14px/1.2 var(--display); letter-spacing: .08em; text-transform: uppercase; }
-  .tier .sum { font: 800 44px/1.05 var(--display); font-variant-numeric: tabular-nums; }
-  .tier .old { text-decoration: line-through; opacity: .6; font-size: 20px; }
-  .tier span:last-child { font-size: 17px; }
-  .signup { margin-top: 32px; display: grid; gap: 18px; }
-  .seats { font: 600 18px/1.4 var(--display); }
-  .contact { display: grid; gap: 10px; font-size: 18px; }
-  .phone {
-    font: 800 clamp(28px, 8.5vw, 36px)/1.1 var(--display);
-    color: var(--accent); text-decoration: none; user-select: all;
-    font-variant-numeric: tabular-nums;
-  }
-
-  footer { padding-block: 40px 56px; border-top: 1px solid var(--line); font-size: 16px; color: var(--muted); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .caret { animation: none; }
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    .js .reveal, .js .pop { opacity: 1; transform: none; }
-    .btn { transition: none; }
-  }
-</style>
-
-<script>document.documentElement.classList.add("js")</script>
-<header class="hero">
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <symbol id="spark" viewBox="0 0 100 100"><g stroke="#ff8a5b" stroke-width="9" stroke-linecap="round"><line x1="50" y1="50" x2="50.0" y2="6.0"/><line x1="50" y1="50" x2="68.0" y2="18.8"/><line x1="50" y1="50" x2="88.1" y2="28.0"/><line x1="50" y1="50" x2="88.0" y2="50.0"/><line x1="50" y1="50" x2="88.1" y2="72.0"/><line x1="50" y1="50" x2="67.5" y2="80.3"/><line x1="50" y1="50" x2="50.0" y2="94.0"/><line x1="50" y1="50" x2="31.0" y2="82.9"/><line x1="50" y1="50" x2="11.9" y2="72.0"/><line x1="50" y1="50" x2="14.0" y2="50.0"/><line x1="50" y1="50" x2="11.9" y2="28.0"/><line x1="50" y1="50" x2="31.0" y2="17.1"/></g></symbol>
-  <symbol id="bot" viewBox="0 0 160 180">
-    <line x1="80" y1="9" x2="80" y2="30" stroke="#ff8a5b" stroke-width="5" stroke-linecap="round"/>
-    <circle class="bot-ball" cx="80" cy="9" r="7" fill="#ff8a5b"/>
-    <rect x="16" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
-    <rect x="128" y="56" width="16" height="28" rx="8" fill="#ff8a5b"/>
-    <path d="M48 132 Q28 142 26 160" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <g class="bot-arm"><path d="M112 132 Q140 130 144 104" stroke="#ff8a5b" stroke-width="11" fill="none" stroke-linecap="round"/>
-    <circle cx="144" cy="98" r="9" fill="#ff8a5b"/></g>
-    <rect x="46" y="114" width="68" height="58" rx="20" fill="#ff8a5b"/>
-    <circle cx="80" cy="143" r="11" fill="#1c0f08"/>
-    <circle cx="80" cy="143" r="4.5" fill="#ff8a5b"/>
-    <rect x="28" y="30" width="104" height="80" rx="28" fill="#24211e" stroke="#ff8a5b" stroke-width="4"/>
-    <rect x="40" y="44" width="80" height="52" rx="20" fill="#100f0e"/>
-    <g class="bot-eye"><circle cx="62" cy="67" r="8" fill="#ff8a5b"/><circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/></g>
-    <g class="bot-eye"><circle cx="98" cy="67" r="8" fill="#ff8a5b"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/></g>
-    <path d="M68 81 Q80 92 92 81" stroke="#ff8a5b" stroke-width="4" fill="none" stroke-linecap="round"/>
-    <circle cx="50" cy="82" r="5" fill="#ff8a5b" opacity=".35"/><circle cx="110" cy="82" r="5" fill="#ff8a5b" opacity=".35"/>
-  </symbol>
-</svg>
-
-  <div class="wrap hero-grid">
-    <div class="hero-text">
-      <p class="eyebrow"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум Евгении Лугиновой · 14 или 17 октября</p>
-      <h1>Claude — ваш личный <span class="hl">ИИ-помощник</span> в бизнесе и жизни</h1>
-      <p class="lead">Пока одни спорят, заменит ли ИИ людей, другие уже передали ему половину рутины. <b>За одну встречу вы установите Claude, подключите его к своим сервисам и сделаете вживую то, на что обычно уходит неделя работы маркетолога, аналитика и программиста. А ещё соберёте своего ИИ-агента, который останется работать на вас после практикума.</b></p>
-      <div class="facts">
-        <div class="fact"><small>Дата на выбор</small>среда, 14 октября, 16:30</div>
-        <div class="fact"><small>или</small>суббота, 17 октября, 10:00</div>
-        <div class="fact wide"><small>Где</small>адрес пришлю после записи</div>
-        <div class="fact"><small>Длительность</small>около 3,5 часов</div>
-        <div class="fact"><small>Группа</small>всего 4 человека</div>
-      </div>
-      <div class="cta-row">
-        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Записаться в WhatsApp</a>
-        <span class="muted">Предоплата 5 000 ₽</span>
-      </div>
-    </div>
-
-    <div class="robot-stage" aria-hidden="true">
-      <svg class="star s1" viewBox="0 0 100 100"><use href="#spark"/></svg>
-      <svg class="star s2" viewBox="0 0 100 100"><use href="#spark"/></svg>
-      <svg class="star s3" viewBox="0 0 100 100"><use href="#spark"/></svg>
-      <div class="bubble">Привет!</div>
-      <div class="robot-rise"><svg class="robot robot-hero" viewBox="0 0 160 180"><use href="#bot"/></svg></div>
-    </div>
+/* анимации */
+@keyframes rise{from{transform:translateY(40px) scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes bob{50%{transform:translateY(-6px)}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(228,242,90,.55)}70%,100%{box-shadow:0 0 0 18px rgba(228,242,90,0)}}
+.hero-a .bot-wrap{animation:rise .9s cubic-bezier(.34,1.56,.64,1) .2s both,bob 4s ease-in-out 1.3s infinite}
+.glass{animation:rise .7s ease .8s both}
+.hero-a .btn{animation:ring 2.6s ease-out infinite}
+.js .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}
+.js .reveal.in{opacity:1;transform:none}
+.js .bcard .art{opacity:0;transform:scale(.4) rotate(-15deg)}
+.js .bcard.in .art{opacity:1;transform:none;transition:opacity .3s ease .15s,transform .8s cubic-bezier(.34,1.56,.64,1) .15s}
+.js .price .ex{opacity:0;transform:translateY(40px) scale(.5) rotate(-10deg)}
+.js .price.in .ex{opacity:1;transform:rotate(10deg);transition:opacity .3s ease .2s,transform .9s cubic-bezier(.34,1.56,.64,1) .2s}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important} .js .reveal,.js .bcard .art{opacity:1;transform:none} .js .price .ex{opacity:1;transform:rotate(10deg)}}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="chr" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#fdfdfd"/><stop offset=".22" stop-color="#8d8d8d"/><stop offset=".42" stop-color="#1c1c1c"/>
+<stop offset=".58" stop-color="#efefef"/><stop offset=".78" stop-color="#6a6a6a"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+<linearGradient id="chr2" x1="1" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff"/><stop offset=".3" stop-color="#4a4a4a"/><stop offset=".5" stop-color="#f4f4f4"/>
+<stop offset=".75" stop-color="#2a2a2a"/><stop offset="1" stop-color="#cfcfcf"/></linearGradient>
+<filter id="sh" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#000" flood-opacity=".28"/></filter></defs><symbol id="spark" viewBox="0 0 100 100"><g stroke="currentColor" stroke-width="9" stroke-linecap="round"><line x1="50" y1="50" x2="50.0" y2="6.0"/><line x1="50" y1="50" x2="68.0" y2="18.8"/><line x1="50" y1="50" x2="88.1" y2="28.0"/><line x1="50" y1="50" x2="88.0" y2="50.0"/><line x1="50" y1="50" x2="88.1" y2="72.0"/><line x1="50" y1="50" x2="67.5" y2="80.3"/><line x1="50" y1="50" x2="50.0" y2="94.0"/><line x1="50" y1="50" x2="31.0" y2="82.9"/><line x1="50" y1="50" x2="11.9" y2="72.0"/><line x1="50" y1="50" x2="14.0" y2="50.0"/><line x1="50" y1="50" x2="11.9" y2="28.0"/><line x1="50" y1="50" x2="31.0" y2="17.1"/></g></symbol><symbol id="bot" viewBox="0 0 160 180">
+    <line x1="80" y1="9" x2="80" y2="30" stroke="#e4f25a" stroke-width="5" stroke-linecap="round"/>
+    <circle class="bot-ball" cx="80" cy="9" r="7" fill="#e4f25a"/>
+    <rect x="16" y="56" width="16" height="28" rx="8" fill="#e4f25a"/>
+    <rect x="128" y="56" width="16" height="28" rx="8" fill="#e4f25a"/>
+    <path d="M48 132 Q28 142 26 160" stroke="#e4f25a" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <g class="bot-arm"><path d="M112 132 Q140 130 144 104" stroke="#e4f25a" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <circle cx="144" cy="98" r="9" fill="#e4f25a"/></g>
+    <rect x="46" y="114" width="68" height="58" rx="20" fill="#e4f25a"/>
+    <circle cx="80" cy="143" r="11" fill="#0d0d0d"/>
+    <circle cx="80" cy="143" r="4.5" fill="#e4f25a"/>
+    <rect x="28" y="30" width="104" height="80" rx="28" fill="#1a1a1a" stroke="#e4f25a" stroke-width="4"/>
+    <rect x="40" y="44" width="80" height="52" rx="20" fill="#0d0d0d"/>
+    <g class="bot-eye"><circle cx="62" cy="67" r="8" fill="#e4f25a"/><circle cx="65" cy="64" r="2.5" fill="#f6f1ea"/></g>
+    <g class="bot-eye"><circle cx="98" cy="67" r="8" fill="#e4f25a"/><circle cx="101" cy="64" r="2.5" fill="#f6f1ea"/></g>
+    <path d="M68 81 Q80 92 92 81" stroke="#e4f25a" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <circle cx="50" cy="82" r="5" fill="#e4f25a" opacity=".35"/><circle cx="110" cy="82" r="5" fill="#e4f25a" opacity=".35"/>
+  </symbol></svg>
+<div class="wrap">
+ <nav class="nav">
+  <div class="left"><a class="pill" href="#program">Программа</a><a class="pill" href="#dates">Даты</a><a class="pill" href="#price">Стоимость</a></div>
+  <div class="logo"><svg viewBox="0 0 100 100"><use href="#spark"/></svg>Практикум по Claude</div>
+  <div class="right"><a class="pill" href="#who">Для кого</a><a class="pill line" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">WhatsApp</a></div>
+ </nav>
+ <header class="hero">
+  <div class="hero-a">
+   <svg class="bot-wrap" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+   <div class="brand"><svg viewBox="0 0 100 100"><use href="#spark"/></svg>Практикум Евгении Лугиновой</div>
+   <h1>Claude — ваш личный <b>ИИ-помощник</b> в бизнесе и жизни</h1>
+   <p class="sub">Установите, подключите к своим сервисам и сделайте вживую то, на что обычно уходит неделя работы</p>
+   <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Записаться в WhatsApp <svg class="ar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
   </div>
-</header>
-
-<main>
-  <section id="program">
-    <div class="wrap">
-      <div class="sec-head">
-        <p class="eyebrow">Программа</p>
-        <h2>От установки до первых результатов для вашего бизнеса</h2>
-      </div>
-
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Блок 1</span>
-          <h3>Установка</h3>
-          <p>Чтобы ни у кого не осталось «у меня не работает».</p>
-        </div>
-        <div class="items">
-          <details class="item">
-            <summary><h3>Загрузка</h3></summary>
-            <div class="item-body">
-            <p>Скачиваем Claude на компьютер и телефон вместе, шаг за шагом.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Установка и вход</h3></summary>
-            <div class="item-body">
-            <p>Регистрируемся и входим в аккаунт. Не получается — помогу лично.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Оплата подписки</h3></summary>
-            <div class="item-body">
-            <p>Оформляем подписку Claude, чтобы были доступны все возможности практикума, в том числе Claude Code.</p>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Блок 2</span>
-          <h3>Основные настройки и подключения</h3>
-          <p>Claude узнаёт вас и получает доступ к вашим делам.</p>
-        </div>
-        <div class="items">
-          <details class="item">
-            <summary><h3>Основные настройки</h3></summary>
-            <div class="item-body">
-            <p>Как научить Claude «помнить» вас и ваш стиль. Голос, фото, файлы.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Подключаем коннекторы</h3></summary>
-            <div class="item-body">
-            <p>Google Диск, Календарь и Notion. «Что у меня на неделе?», «найди тот документ», «запиши мои идеи» — Claude делает это сам.</p>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Блок 3</span>
-          <h3>Знакомство с Claude: для жизни и для работы</h3>
-          <p>Настраиваем Claude под вашу жизнь и ваш бизнес.</p>
-        </div>
-        <div class="items">
-          <details class="item wide">
-            <summary><h3>Формула запроса, после которой ИИ понимает вас с полуслова</h3></summary>
-            <div class="item-body">
-            <p>Как ставить задачи, чтобы ответы были точными: <b>кто я + задача + контекст + формат</b>. Голос, фото, файлы: как давать Claude материал в любом виде.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Учиться в 10 раз быстрее</h3></summary>
-            <div class="item-body">
+  <div class="hero-b">
+   <svg class="mesh" viewBox="0 0 400 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><polyline points="0,30.0 8,38.8 16,46.7 24,53.2 32,57.6 40,59.8 48,59.7 56,57.8 64,54.5 72,50.6 80,46.9 88,43.8 96,42.0 104,41.8 112,42.9 120,45.3 128,48.3 136,51.3 144,53.5 152,54.4 160,53.3 168,50.2 176,44.9 184,37.8 192,29.5 200,20.8 208,12.4 216,5.1 224,-0.4 232,-3.7 240,-4.5 248,-3.2 256,0.0 264,4.4 272,9.3 280,13.9 288,17.6 296,20.0 304,20.8 312,20.1 320,18.3 328,16.0 336,13.7 344,12.3 352,12.3 360,14.1 368,18.0 376,23.8 384,31.1 392,39.4 400,47.7" fill="none" stroke="#fff" stroke-opacity="0.25" stroke-width="1"/><polyline points="0,46.5 8,55.2 16,63.3 24,70.0 32,74.6 40,77.0 48,77.0 56,74.9 64,71.2 72,66.5 80,61.7 88,57.5 96,54.3 104,52.6 112,52.4 120,53.6 128,55.8 136,58.2 144,60.2 152,61.1 160,60.5 168,57.8 176,53.1 184,46.7 192,38.9 200,30.5 208,22.3 216,15.0 224,9.5 232,6.2 240,5.2 248,6.7 256,10.2 264,15.2 272,20.9 280,26.6 288,31.6 296,35.3 304,37.4 312,37.9 320,37.1 328,35.4 336,33.5 344,32.0 352,31.6 360,32.9 368,36.0 376,40.9 384,47.5 392,55.1 400,62.9" fill="none" stroke="#fff" stroke-opacity="0.42" stroke-width="1"/><polyline points="0,62.4 8,70.8 16,78.8 24,85.5 32,90.2 40,92.6 48,92.6 56,90.3 64,86.2 72,80.9 80,75.2 88,69.7 96,65.3 104,62.2 112,60.8 120,60.9 128,62.1 136,64.0 144,65.9 152,67.0 160,66.7 168,64.8 176,60.9 184,55.2 192,48.2 200,40.4 208,32.6 216,25.6 224,20.1 232,16.8 240,15.9 248,17.5 256,21.3 264,26.7 272,33.2 280,39.8 288,45.9 296,50.8 304,54.2 312,55.8 320,55.9 328,54.8 336,53.1 344,51.5 352,50.7 360,51.2 368,53.4 376,57.4 384,63.0 392,69.7 400,76.9" fill="none" stroke="#fff" stroke-opacity="0.57" stroke-width="1"/><polyline points="0,77.1 8,85.0 16,92.6 24,99.1 32,103.8 40,106.3 48,106.2 56,103.7 64,99.3 72,93.4 80,86.8 88,80.3 96,74.7 104,70.4 112,67.7 120,66.8 128,67.2 136,68.7 144,70.4 152,71.8 160,72.1 168,70.9 176,68.0 184,63.3 192,57.2 200,50.2 208,43.0 216,36.4 224,31.2 232,28.0 240,27.1 248,28.8 256,32.8 264,38.6 272,45.7 280,53.1 288,60.2 296,66.2 304,70.7 312,73.3 320,74.2 328,73.6 336,72.1 344,70.3 352,69.0 360,68.7 368,69.8 376,72.7 384,77.1 392,82.7 400,89.0" fill="none" stroke="#fff" stroke-opacity="0.69" stroke-width="1"/><polyline points="0,90.2 8,97.4 16,104.5 24,110.6 32,115.1 40,117.5 48,117.4 56,114.8 64,110.0 72,103.7 80,96.4 88,89.1 96,82.4 104,77.0 112,73.2 120,71.3 128,71.1 136,72.1 144,73.8 152,75.5 160,76.5 168,76.2 176,74.4 184,70.8 192,65.8 200,59.8 208,53.4 216,47.4 224,42.5 232,39.5 240,38.7 248,40.4 256,44.5 264,50.6 272,58.1 280,66.2 288,74.0 296,80.9 304,86.3 312,89.8 320,91.4 328,91.2 336,89.8 344,87.8 352,85.9 360,84.6 368,84.7 376,86.2 384,89.4 392,93.9 400,99.1" fill="none" stroke="#fff" stroke-opacity="0.77" stroke-width="1"/><polyline points="0,101.3 8,107.6 16,114.0 24,119.7 32,123.9 40,126.1 48,126.0 56,123.3 64,118.4 72,111.7 80,103.9 88,95.9 96,88.4 104,82.0 112,77.4 120,74.7 128,73.8 136,74.5 144,76.2 152,78.3 160,80.0 168,80.7 176,80.1 184,77.8 192,74.0 200,69.1 208,63.7 216,58.3 224,53.9 232,51.1 240,50.4 248,52.1 256,56.2 264,62.4 272,70.1 280,78.6 288,87.0 296,94.6 304,100.7 312,105.0 320,107.1 328,107.3 336,105.9 344,103.6 352,101.0 360,98.8 368,97.6 376,97.9 384,99.7 392,102.8 400,107.0" fill="none" stroke="#fff" stroke-opacity="0.80" stroke-width="1"/><polyline points="0,110.4 8,115.6 16,121.2 24,126.3 32,130.2 40,132.3 48,132.0 56,129.4 64,124.5 72,117.6 80,109.6 88,101.0 96,92.8 104,85.8 112,80.4 120,77.0 128,75.6 136,76.1 144,77.9 152,80.4 160,82.9 168,84.7 176,85.3 184,84.4 192,82.0 200,78.3 208,73.8 216,69.3 224,65.4 232,62.8 240,62.2 248,63.8 256,67.8 264,73.9 272,81.6 280,90.2 288,99.0 296,107.1 304,113.8 312,118.5 320,121.1 328,121.5 336,120.1 344,117.5 352,114.2 360,111.0 368,108.6 376,107.5 384,107.8 392,109.6 400,112.6" fill="none" stroke="#fff" stroke-opacity="0.78" stroke-width="1"/><polyline points="0,117.5 8,121.6 16,126.2 24,130.7 32,134.2 40,136.1 48,135.9 56,133.3 64,128.5 72,121.7 80,113.5 88,104.8 96,96.2 104,88.6 112,82.6 120,78.7 128,77.0 136,77.3 144,79.2 152,82.2 160,85.5 168,88.3 176,90.2 184,90.8 192,89.8 200,87.4 208,84.1 216,80.3 224,77.0 232,74.6 240,74.0 248,75.5 256,79.1 264,85.0 272,92.5 280,101.1 288,109.9 296,118.3 304,125.3 312,130.4 320,133.3 328,133.9 336,132.4 344,129.4 352,125.4 360,121.3 368,117.7 376,115.1 384,114.0 392,114.5 400,116.2" fill="none" stroke="#fff" stroke-opacity="0.70" stroke-width="1"/><polyline points="0,122.9 8,125.8 16,129.4 24,133.1 32,136.2 40,137.9 48,137.8 56,135.5 64,130.9 72,124.4 80,116.4 88,107.6 96,98.8 104,90.9 112,84.6 120,80.3 128,78.3 136,78.6 144,80.7 152,84.1 160,88.2 168,92.1 176,95.3 184,97.3 192,97.7 200,96.7 208,94.5 216,91.6 224,88.8 232,86.7 240,86.0 248,87.1 256,90.4 264,95.8 272,102.9 280,111.1 288,119.9 296,128.2 304,135.3 312,140.6 320,143.7 328,144.4 336,142.8 344,139.4 352,134.8 360,129.7 368,125.0 376,121.1 384,118.6 392,117.7 400,118.2" fill="none" stroke="#fff" stroke-opacity="0.59" stroke-width="1"/><polyline points="0,127.0 8,128.6 16,131.2 24,134.1 32,136.8 40,138.4 48,138.5 56,136.5 64,132.4 72,126.3 80,118.6 88,110.0 96,101.4 104,93.4 112,86.9 120,82.4 128,80.3 136,80.5 144,82.8 152,86.7 160,91.5 168,96.5 176,101.0 184,104.3 192,106.1 200,106.4 208,105.3 216,103.3 224,101.0 232,99.1 240,98.2 248,99.0 256,101.7 264,106.4 272,112.9 280,120.6 288,129.0 296,137.0 304,144.1 312,149.5 320,152.6 328,153.3 336,151.6 344,147.8 352,142.7 360,136.8 368,130.9 376,125.8 384,122.0 392,119.7 400,119.1" fill="none" stroke="#fff" stroke-opacity="0.44" stroke-width="1"/><polyline points="0,130.2 8,130.5 16,132.1 24,134.3 32,136.6 40,138.2 48,138.4 56,136.9 64,133.4 72,127.9 80,120.9 88,112.8 96,104.4 104,96.6 112,90.1 120,85.6 128,83.4 136,83.6 144,86.2 152,90.5 160,96.0 168,101.9 176,107.5 184,112.1 192,115.3 200,116.8 208,116.8 216,115.7 224,113.8 232,112.1 240,111.0 248,111.3 256,113.2 264,117.1 272,122.8 280,129.7 288,137.4 296,145.1 304,151.9 312,157.1 320,160.2 328,160.9 336,159.0 344,155.0 352,149.4 360,142.7 368,135.9 376,129.7 384,124.7 392,121.2 400,119.5" fill="none" stroke="#fff" stroke-opacity="0.27" stroke-width="1"/><polyline points="0,133.1 8,132.2 16,132.7 24,134.3 32,136.2 40,137.8 48,138.4 56,137.5 64,134.7 72,130.1 80,123.8 88,116.4 96,108.6 104,101.2 112,94.9 120,90.4 128,88.2 136,88.5 144,91.2 152,95.9 160,102.0 168,108.8 176,115.4 184,121.2 192,125.6 200,128.3 208,129.3 216,128.8 224,127.4 232,125.7 240,124.4 248,124.0 256,125.2 264,128.1 272,132.7 280,138.7 288,145.6 296,152.6 304,159.0 312,164.0 320,166.9 328,167.5 336,165.6 344,161.4 352,155.3 360,148.1 368,140.5 376,133.4 384,127.3 392,122.8 400,120.1" fill="none" stroke="#fff" stroke-opacity="0.40" stroke-width="1"/><polyline points="0,136.1 8,134.1 16,133.8 24,134.7 32,136.3 40,137.9 48,138.9 56,138.7 64,136.9 72,133.2 80,128.0 88,121.5 96,114.4 104,107.5 112,101.6 120,97.3 128,95.2 136,95.6 144,98.4 152,103.4 160,109.9 168,117.3 176,124.8 184,131.6 192,137.1 200,140.8 208,142.7 216,143.0 224,141.9 232,140.2 240,138.5 248,137.4 256,137.6 264,139.4 272,142.8 280,147.7 288,153.6 296,159.8 304,165.7 312,170.3 320,173.1 328,173.6 336,171.6 344,167.3 352,161.0 360,153.4 368,145.2 376,137.3 384,130.3 392,125.0 400,121.5" fill="none" stroke="#fff" stroke-opacity="0.55" stroke-width="1"/><polyline points="0,139.8 8,136.8 16,135.6 24,135.9 32,137.3 40,139.1 48,140.6 56,141.2 64,140.4 72,137.9 80,133.8 88,128.4 96,122.3 104,116.1 112,110.6 120,106.6 128,104.6 136,105.0 144,107.9 152,113.0 160,119.9 168,127.8 176,136.0 184,143.6 192,149.9 200,154.6 208,157.2 216,158.0 224,157.3 232,155.5 240,153.3 248,151.5 256,150.7 264,151.2 272,153.4 280,157.0 288,161.7 296,167.0 304,172.2 312,176.4 320,178.9 328,179.4 336,177.5 344,173.2 352,166.8 360,159.0 368,150.4 376,142.0 384,134.4 392,128.3 400,124.1" fill="none" stroke="#fff" stroke-opacity="0.68" stroke-width="1"/><polyline points="0,144.4 8,140.6 16,138.7 24,138.6 32,139.8 40,141.8 48,143.9 56,145.3 64,145.6 72,144.4 80,141.6 88,137.4 96,132.3 104,126.9 112,122.0 120,118.4 128,116.5 136,117.0 144,119.8 152,125.0 160,131.9 168,140.1 176,148.7 184,157.0 192,164.0 200,169.4 208,172.7 216,173.9 224,173.4 232,171.4 240,168.8 248,166.2 256,164.3 264,163.5 272,164.3 280,166.5 288,170.1 296,174.3 304,178.7 312,182.4 320,184.8 328,185.2 336,183.4 344,179.2 352,173.0 360,165.2 368,156.5 376,147.7 384,139.7 392,133.1 400,128.4" fill="none" stroke="#fff" stroke-opacity="0.76" stroke-width="1"/><polyline points="0,150.3 8,145.7 16,143.2 24,142.7 32,143.9 40,146.2 48,148.8 56,151.2 64,152.7 72,152.8 80,151.4 88,148.5 96,144.6 104,140.1 112,135.9 120,132.6 128,130.9 136,131.3 144,134.0 152,139.0 160,145.9 168,154.2 176,163.0 184,171.6 192,179.1 200,185.0 208,188.8 216,190.4 224,189.9 232,187.8 240,184.7 248,181.3 256,178.2 264,176.2 272,175.5 280,176.4 288,178.6 296,181.7 304,185.3 312,188.5 320,190.6 328,191.1 336,189.5 344,185.7 352,179.8 360,172.2 368,163.6 376,154.7 384,146.5 392,139.6 400,134.6" fill="none" stroke="#fff" stroke-opacity="0.80" stroke-width="1"/><polyline points="0,157.4 8,152.3 16,149.4 24,148.6 32,149.8 40,152.3 48,155.6 56,158.9 64,161.6 72,163.1 80,163.1 88,161.6 96,158.9 104,155.5 112,151.9 120,149.0 128,147.5 136,147.7 144,150.2 152,154.9 160,161.5 168,169.6 176,178.4 184,187.1 192,194.9 200,201.1 208,205.3 216,207.1 224,206.7 232,204.3 240,200.7 248,196.4 256,192.3 264,189.0 272,186.9 280,186.3 288,187.2 296,189.3 304,192.0 312,194.7 320,196.6 328,197.2 336,195.9 344,192.5 352,187.1 360,180.0 368,171.7 376,163.1 384,154.9 392,147.9 400,142.7" fill="none" stroke="#fff" stroke-opacity="0.78" stroke-width="1"/><polyline points="0,165.7 8,160.3 16,157.1 24,156.1 32,157.3 40,160.2 48,164.1 56,168.4 64,172.2 72,175.0 80,176.5 88,176.4 96,175.0 104,172.5 112,169.7 120,167.2 128,165.7 136,165.8 144,167.9 152,172.1 160,178.2 168,185.9 176,194.4 184,203.0 192,210.9 200,217.2 208,221.5 216,223.5 224,223.0 232,220.5 240,216.4 248,211.3 256,206.2 264,201.6 272,198.1 280,196.1 288,195.7 296,196.7 304,198.6 312,200.8 320,202.6 328,203.4 336,202.5 344,199.8 352,195.1 360,188.6 368,180.9 376,172.7 384,164.7 392,157.8 400,152.7" fill="none" stroke="#fff" stroke-opacity="0.72" stroke-width="1"/><polyline points="0,175.1 8,169.5 16,166.1 24,165.1 32,166.4 40,169.6 48,174.1 56,179.2 64,184.2 72,188.3 80,191.2 88,192.5 96,192.2 104,190.8 112,188.7 120,186.5 128,185.0 136,184.9 144,186.4 152,190.0 160,195.5 168,202.5 176,210.5 184,218.8 192,226.4 200,232.7 208,237.1 216,239.1 224,238.6 232,235.8 240,231.3 248,225.5 256,219.4 264,213.7 272,208.9 280,205.7 288,204.0 296,203.9 304,205.1 312,206.8 320,208.6 328,209.6 336,209.3 344,207.3 352,203.4 360,197.8 368,191.0 376,183.4 384,175.9 392,169.2 400,164.2" fill="none" stroke="#fff" stroke-opacity="0.61" stroke-width="1"/><polyline points="0,185.4 8,179.7 16,176.3 24,175.2 32,176.6 40,180.1 48,185.2 56,191.1 64,197.1 72,202.5 80,206.6 88,209.2 96,210.2 104,209.7 112,208.2 120,206.4 128,204.8 136,204.3 144,205.2 152,208.0 160,212.6 168,218.8 176,226.1 184,233.7 192,241.0 200,247.1 208,251.4 216,253.3 224,252.8 232,249.8 240,244.9 248,238.6 256,231.7 264,224.9 272,219.0 280,214.5 288,211.8 296,210.7 304,211.1 312,212.5 320,214.2 328,215.6 336,216.0 344,214.9 352,212.0 360,207.5 368,201.6 376,194.8 384,188.0 392,181.8 400,177.0" fill="none" stroke="#fff" stroke-opacity="0.46" stroke-width="1"/><polyline points="0,196.2 8,190.7 16,187.3 24,186.3 32,187.7 40,191.5 48,197.0 56,203.6 64,210.5 72,217.0 80,222.3 88,226.1 96,228.1 104,228.5 112,227.7 120,226.1 128,224.4 136,223.4 144,223.6 152,225.4 160,229.0 168,234.1 176,240.5 184,247.4 192,254.1 200,259.9 208,263.9 216,265.8 224,265.2 232,262.1 240,256.9 248,250.2 256,242.6 264,235.0 272,228.1 280,222.6 288,218.8 296,216.9 304,216.7 312,217.8 320,219.6 328,221.3 336,222.4 344,222.3 352,220.6 360,217.3 368,212.5 376,206.8 384,200.8 392,195.1 400,190.7" fill="none" stroke="#fff" stroke-opacity="0.30" stroke-width="1"/><polyline points="0,207.3 8,202.1 16,198.8 24,197.9 32,199.4 40,203.3 48,209.2 56,216.3 64,224.0 72,231.4 80,237.7 88,242.6 96,245.6 104,246.8 112,246.4 120,245.0 128,243.1 136,241.6 144,240.9 152,241.7 160,244.1 168,248.0 176,253.3 184,259.3 192,265.3 200,270.5 208,274.3 216,276.1 224,275.4 232,272.3 240,267.0 248,260.0 256,251.9 264,243.7 272,236.0 280,229.6 288,225.0 296,222.3 304,221.6 312,222.5 320,224.4 328,226.6 336,228.5 344,229.5 352,229.0 360,227.0 368,223.5 376,219.0 384,213.8 392,208.9 400,204.9" fill="none" stroke="#fff" stroke-opacity="0.37" stroke-width="1"/><polyline points="0,218.5 8,213.7 16,210.6 24,209.8 32,211.4 40,215.4 48,221.4 56,228.9 64,237.1 72,245.2 80,252.4 88,258.1 96,262.0 104,263.8 112,263.9 120,262.5 128,260.4 136,258.3 144,256.7 152,256.3 160,257.4 168,260.1 176,264.1 184,269.0 192,274.2 200,278.9 208,282.4 216,284.0 224,283.3 232,280.3 240,275.0 248,267.8 256,259.5 264,250.9 272,242.6 280,235.6 288,230.3 296,227.1 304,225.9 312,226.6 320,228.7 328,231.4 336,234.2 344,236.3 352,237.1 360,236.5 368,234.4 376,231.1 384,227.0 392,222.8 400,219.3" fill="none" stroke="#fff" stroke-opacity="0.53" stroke-width="1"/><polyline points="0,229.8 8,225.4 16,222.6 24,221.8 32,223.4 40,227.3 48,233.4 56,241.1 64,249.6 72,258.2 80,266.0 88,272.4 96,276.9 104,279.3 112,279.7 120,278.4 128,276.0 136,273.2 144,270.7 152,269.1 160,268.8 168,270.1 176,272.8 184,276.6 192,280.8 200,284.9 208,288.0 216,289.5 224,288.9 232,286.0 240,280.8 248,273.8 256,265.5 264,256.6 272,248.1 280,240.6 288,234.8 296,231.1 304,229.7 312,230.3 320,232.6 328,235.9 336,239.5 344,242.7 352,244.9 360,245.7 368,245.0 376,243.0 384,240.0 392,236.6 400,233.5" fill="none" stroke="#fff" stroke-opacity="0.66" stroke-width="1"/><polyline points="0,241.0 8,237.2 16,234.6 24,233.9 32,235.3 40,239.1 48,245.0 56,252.7 64,261.3 72,270.1 80,278.3 88,285.2 96,290.2 104,293.0 112,293.6 120,292.3 128,289.6 136,286.1 144,282.6 152,279.8 160,278.2 168,278.0 176,279.3 184,281.9 192,285.2 200,288.5 208,291.3 216,292.7 224,292.2 232,289.6 240,284.8 248,278.1 256,270.0 264,261.2 272,252.6 280,244.8 288,238.8 296,234.8 304,233.2 312,233.8 320,236.3 328,240.1 336,244.6 344,248.9 352,252.4 360,254.6 368,255.4 376,254.6 384,252.7 392,250.1 400,247.5" fill="none" stroke="#fff" stroke-opacity="0.75" stroke-width="1"/><polyline points="0,252.3 8,249.0 16,246.7 24,246.0 32,247.2 40,250.7 48,256.3 56,263.6 64,272.1 72,281.0 80,289.3 88,296.5 96,301.8 104,304.9 112,305.6 120,304.2 128,301.2 136,297.0 144,292.6 152,288.6 160,285.6 168,284.0 176,283.9 184,285.2 192,287.5 200,290.2 208,292.6 216,294.0 224,293.8 232,291.6 240,287.3 248,281.1 256,273.5 264,265.0 272,256.4 280,248.7 288,242.5 296,238.4 304,236.7 312,237.4 320,240.1 328,244.5 336,249.7 344,255.0 352,259.8 360,263.4 368,265.5 376,266.0 384,265.1 392,263.3 400,261.2" fill="none" stroke="#fff" stroke-opacity="0.80" stroke-width="1"/><polyline points="0,263.7 8,261.1 16,259.0 24,258.2 32,259.1 40,262.1 48,267.2 56,274.0 64,282.1 72,290.7 80,299.1 88,306.3 96,311.7 104,315.0 112,315.8 120,314.3 128,310.8 136,306.1 144,300.8 152,295.6 160,291.3 168,288.4 176,286.9 184,287.0 192,288.4 200,290.4 208,292.5 216,293.9 224,294.0 232,292.3 240,288.8 248,283.3 256,276.3 264,268.3 272,260.2 280,252.7 288,246.6 296,242.4 304,240.7 312,241.4 320,244.4 328,249.2 336,255.1 344,261.4 352,267.3 360,272.2 368,275.6 376,277.3 384,277.4 392,276.4 400,274.7" fill="none" stroke="#fff" stroke-opacity="0.79" stroke-width="1"/><polyline points="0,275.6 8,273.5 16,271.6 24,270.6 32,271.1 40,273.5 48,277.9 56,284.1 64,291.5 72,299.7 80,307.7 88,314.8 96,320.2 104,323.5 112,324.3 120,322.6 128,318.9 136,313.6 144,307.5 152,301.3 160,295.8 168,291.6 176,288.9 184,287.8 192,288.2 200,289.7 208,291.5 216,293.0 224,293.5 232,292.5 240,289.8 248,285.2 256,279.1 264,271.9 272,264.4 280,257.3 288,251.4 296,247.3 304,245.6 312,246.4 320,249.6 328,254.8 336,261.3 344,268.4 352,275.3 360,281.3 368,285.8 376,288.6 384,289.7 392,289.3 400,287.9" fill="none" stroke="#fff" stroke-opacity="0.73" stroke-width="1"/><polyline points="0,288.1 8,286.4 16,284.7 24,283.5 32,283.5 40,285.1 48,288.6 56,293.9 64,300.5 72,308.0 80,315.5 88,322.3 96,327.5 104,330.7 112,331.5 120,329.7 128,325.8 136,320.0 144,313.2 152,306.2 160,299.6 168,294.2 176,290.3 184,288.2 192,287.8 200,288.7 208,290.3 216,291.9 224,293.0 232,292.8 240,291.0 248,287.5 256,282.5 264,276.3 272,269.5 280,263.0 288,257.4 296,253.6 304,252.0 312,252.8 320,256.1 328,261.5 336,268.5 344,276.2 352,283.9 360,290.9 368,296.4 376,300.2 384,302.1 392,302.3 400,301.2" fill="none" stroke="#fff" stroke-opacity="0.62" stroke-width="1"/><polyline points="0,301.3 8,300.1 16,298.4 24,296.9 32,296.3 40,297.1 48,299.6 56,303.7 64,309.4 72,315.9 80,322.8 88,329.0 96,334.0 104,337.0 112,337.7 120,335.9 128,331.8 136,325.7 144,318.4 152,310.6 160,303.2 168,296.7 176,291.9 184,288.9 192,287.7 200,288.1 208,289.6 216,291.5 224,293.1 232,293.8 240,293.1 248,290.9 256,287.0 264,281.9 272,276.1 280,270.2 288,265.2 296,261.6 304,260.1 312,261.0 320,264.4 328,269.9 336,277.1 344,285.2 352,293.6 360,301.3 368,307.7 376,312.3 384,314.9 392,315.5 400,314.6" fill="none" stroke="#fff" stroke-opacity="0.48" stroke-width="1"/><polyline points="0,315.5 8,314.6 16,312.9 24,311.0 32,309.7 40,309.5 48,310.9 56,313.8 64,318.3 72,323.8 80,329.8 88,335.4 96,340.0 104,342.8 112,343.5 120,341.6 128,337.4 136,331.2 144,323.6 152,315.2 160,307.1 168,299.8 176,294.1 184,290.3 192,288.5 200,288.6 208,290.0 216,292.2 224,294.4 232,296.1 240,296.6 248,295.6 256,293.1 264,289.3 272,284.5 280,279.5 288,275.0 296,271.8 304,270.4 312,271.3 320,274.5 328,280.0 336,287.3 344,295.7 352,304.4 360,312.6 368,319.6 376,324.9 384,328.0 392,329.0 400,328.2" fill="none" stroke="#fff" stroke-opacity="0.32" stroke-width="1"/><polyline points="0,330.5 8,329.9 16,328.1 24,325.8 32,323.7 40,322.5 48,322.6 56,324.3 64,327.4 72,331.7 80,336.7 88,341.6 96,345.8 104,348.4 112,348.9 120,347.2 128,343.0 136,336.8 144,329.0 152,320.4 160,311.8 168,303.9 176,297.6 184,293.2 192,290.9 200,290.6 208,292.1 216,294.6 224,297.5 232,300.2 240,301.9 248,302.3 256,301.2 264,298.7 272,295.1 280,291.0 288,287.1 296,284.2 304,282.9 312,283.7 320,286.8 328,292.0 336,299.2 344,307.5 352,316.4 360,325.0 368,332.4 376,338.1 384,341.6 392,342.9 400,342.1" fill="none" stroke="#fff" stroke-opacity="0.35" stroke-width="1"/><polyline points="0,346.3 8,345.8 16,343.9 24,341.2 32,338.3 40,336.0 48,334.8 56,335.0 64,336.8 72,339.9 80,343.8 88,347.9 96,351.5 104,353.9 112,354.4 120,352.8 128,348.9 136,342.8 144,335.1 152,326.4 160,317.6 168,309.4 176,302.6 184,297.7 192,295.1 200,294.6 208,296.1 216,299.0 224,302.7 232,306.3 240,309.3 248,311.1 256,311.4 264,310.2 272,307.8 280,304.7 288,301.5 296,298.9 304,297.7 312,298.3 320,301.0 328,305.9 336,312.7 344,320.8 352,329.6 360,338.2 368,345.8 376,351.8 384,355.5 392,357.0 400,356.2" fill="none" stroke="#fff" stroke-opacity="0.51" stroke-width="1"/><polyline points="0,362.6 8,362.2 16,360.1 24,356.9 32,353.2 40,349.8 48,347.3 56,346.1 64,346.5 72,348.2 80,351.0 88,354.3 96,357.4 104,359.5 112,360.1 120,358.7 128,355.1 136,349.4 144,342.0 152,333.6 160,324.7 168,316.4 176,309.4 184,304.2 192,301.3 200,300.8 208,302.4 216,305.7 224,310.0 232,314.6 240,318.8 248,321.9 256,323.7 264,323.9 272,322.7 280,320.5 288,318.0 296,315.7 304,314.5 312,314.8 320,317.1 328,321.4 336,327.6 344,335.3 352,343.7 360,352.1 368,359.7 376,365.7 384,369.6 392,371.2 400,370.3" fill="none" stroke="#fff" stroke-opacity="0.65" stroke-width="1"/><polyline points="0,379.0 8,378.7 16,376.4 24,372.7 32,368.2 40,363.7 48,359.9 56,357.3 64,356.3 72,356.7 80,358.4 88,360.8 96,363.3 104,365.3 112,366.0 120,365.0 128,361.9 136,356.7 144,349.9 152,341.8 160,333.3 168,325.0 176,318.0 184,312.7 192,309.7 200,309.1 208,310.8 216,314.5 224,319.4 232,324.9 240,330.2 248,334.7 256,337.8 264,339.4 272,339.4 280,338.1 288,336.2 296,334.2 304,332.9 312,332.8 320,334.5 328,338.1 336,343.6 344,350.5 352,358.4 360,366.4 368,373.8 376,379.7 384,383.6 392,385.1 400,384.1" fill="none" stroke="#fff" stroke-opacity="0.74" stroke-width="1"/><polyline points="0,395.1 8,394.7 16,392.2 24,388.0 32,382.8 40,377.4 48,372.4 56,368.4 64,366.0 72,365.1 80,365.7 88,367.3 96,369.4 104,371.2 112,372.1 120,371.5 128,369.0 136,364.7 144,358.5 152,351.1 160,343.1 168,335.2 176,328.3 184,323.0 192,320.0 200,319.4 208,321.3 216,325.3 224,330.8 232,337.1 240,343.4 248,349.1 256,353.5 264,356.2 272,357.3 280,357.0 288,355.6 296,353.9 304,352.4 312,351.9 320,352.8 328,355.6 336,360.1 344,366.1 352,373.2 360,380.6 368,387.5 376,393.2 384,397.0 392,398.5 400,397.4" fill="none" stroke="#fff" stroke-opacity="0.79" stroke-width="1"/><polyline points="0,410.3 8,409.9 16,407.2 24,402.6 32,396.7 40,390.4 48,384.3 56,379.1 64,375.4 72,373.3 80,372.8 88,373.7 96,375.3 104,377.0 112,378.2 120,378.1 128,376.5 136,373.0 144,367.8 152,361.3 160,353.9 168,346.6 176,340.0 184,335.0 192,332.0 200,331.5 208,333.5 216,337.7 224,343.6 232,350.6 240,357.8 248,364.5 256,370.0 264,374.0 272,376.1 280,376.5 288,375.7 296,374.0 304,372.4 312,371.3 320,371.4 328,373.1 336,376.5 344,381.5 352,387.6 360,394.2 368,400.5 376,405.8 384,409.4 392,410.8 400,409.7" fill="none" stroke="#fff" stroke-opacity="0.79" stroke-width="1"/><polyline points="0,424.1 8,423.7 16,420.8 24,415.9 32,409.5 40,402.4 48,395.3 56,389.0 64,384.1 72,381.0 80,379.6 88,379.7 96,381.0 104,382.7 112,384.2 120,384.8 128,384.1 136,381.7 144,377.6 152,372.0 160,365.6 168,359.0 176,352.9 184,348.2 192,345.4 200,344.9 208,347.0 216,351.3 224,357.6 232,365.0 240,373.0 248,380.5 256,387.0 264,391.9 272,394.9 280,396.1 288,395.6 296,394.1 304,392.1 312,390.4 320,389.6 328,390.2 336,392.4 344,396.1 352,401.1 360,406.7 368,412.3 376,417.2 384,420.5 392,421.8 400,420.6" fill="none" stroke="#fff" stroke-opacity="0.74" stroke-width="1"/></svg>
+   <div class="top"><div class="glass"><span class="av"><svg viewBox="0 0 160 180"><use href="#bot"/></svg></span><span>Привет!<br>Я Claude, ваш помощник</span></div>
+    <div class="dots"><i>◐</i><i class="l">✦</i></div></div>
+   <div class="cap">Пока одни спорят, заменит ли ИИ людей, другие уже передали ему половину рутины</div>
+  </div>
+ </header>
+ <section class="statement">
+  
+  <h2>Результат возможен уже в день практикума</h2>
+  <p>Маркетолог, аналитик и программист в одном помощнике. Вы соберёте своего ИИ-агента, который останется работать на вас.</p>
+  <a class="btn line" href="#dates">Выбрать дату</a>
+ </section>
+ <div class="facts">
+  <div class="fact f1"><small>Дата на выбор</small>14 или 17 октября</div>
+  <div class="fact f2"><small>Длительность</small>около 3,5 часов</div>
+  <div class="fact f3"><small>Группа</small>всего 4 человека</div>
+  <div class="fact f4"><small>Предоплата</small>5 000 ₽</div>
+ </div>
+ <section class="sec" id="program">
+  <h2>Программа: от установки до первых результатов</h2>
+  <div class="bgrid"><article class="bcard dark">
+  <div class="bart"><img class="art a-hash" src="img/hash.png" alt=""></div>
+  <div class="bhead"><span class="chip">Блок 1</span><h3>Установка</h3><p>Чтобы ни у кого не осталось «у меня не работает».</p></div>
+  <div class="rows"><details class="row"><summary><span>Загрузка</span><i></i></summary><div class="row-body">
+            <p>Скачиваем Claude на компьютер и телефон вместе, шаг за шагом.</p></div></details><details class="row"><summary><span>Установка и вход</span><i></i></summary><div class="row-body">
+            <p>Регистрируемся и входим в аккаунт. Не получается — помогу лично.</p></div></details><details class="row"><summary><span>Оплата подписки</span><i></i></summary><div class="row-body">
+            <p>Оформляем подписку Claude, чтобы были доступны все возможности практикума, в том числе Claude Code.</p></div></details></div>
+</article>
+<article class="bcard lime">
+  <div class="bart"><img class="art a-flower" src="img/flower.png" alt=""></div>
+  <div class="bhead"><span class="chip">Блок 2</span><h3>Основные настройки и подключения</h3><p>Claude узнаёт вас и получает доступ к вашим делам.</p></div>
+  <div class="rows"><details class="row"><summary><span>Основные настройки</span><i></i></summary><div class="row-body">
+            <p>Как научить Claude «помнить» вас и ваш стиль. Голос, фото, файлы.</p></div></details><details class="row"><summary><span>Подключаем коннекторы</span><i></i></summary><div class="row-body">
+            <p>Google Диск, Календарь и Notion. «Что у меня на неделе?», «найди тот документ», «запиши мои идеи» — Claude делает это сам.</p></div></details></div>
+</article>
+<article class="bcard gray">
+  <div class="bart"><img class="art a-asterisk" src="img/asterisk.png" alt=""></div>
+  <div class="bhead"><span class="chip">Блок 3</span><h3>Знакомство с Claude: для жизни и для работы</h3><p>Настраиваем Claude под вашу жизнь и ваш бизнес.</p></div>
+  <div class="rows"><details class="row"><summary><span>Формула запроса, после которой ИИ понимает вас с полуслова</span><i></i></summary><div class="row-body">
+            <p>Как ставить задачи, чтобы ответы были точными: <b>кто я + задача + контекст + формат</b>. Голос, фото, файлы: как давать Claude материал в любом виде.</p></div></details><details class="row"><summary><span>Учиться в 10 раз быстрее</span><i></i></summary><div class="row-body">
             <ul>
               <li><b>YouTube → конспект:</b> часовое видео в одну страницу главного</li>
               <li><b>Лекция, вебинар или встреча → расшифровка → конспект</b> по вашему шаблону: где бесплатно получить текст из аудио и видео</li>
               <li><b>Книга или PDF → выжимка</b> и ответы на ваши вопросы</li>
               <li>Сложная тема простыми словами</li>
-            </ul>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Планы без головной боли</h3></summary>
-            <div class="item-body">
-              <p>Маршрут поездки, план переезда или праздника, семейный бюджет — Claude составит и разложит по шагам.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Проекты: Claude, который вас уже знает</h3></summary>
-            <div class="item-body">
+            </ul></div></details><details class="row"><summary><span>Планы без головной боли</span><i></i></summary><div class="row-body">
+              <p>Маршрут поездки, план переезда или праздника, семейный бюджет — Claude составит и разложит по шагам.</p></div></details><details class="row"><summary><span>Проекты: Claude, который вас уже знает</span><i></i></summary><div class="row-body">
               <p>Отдельное пространство под задачу: кто вы, ваши клиенты, прайс, тон общения и нужные файлы. Каждый новый чат внутри проекта уже знает всё это, и не нужно объяснять заново.</p>
               <ul>
                 <li><b>«Мой бизнес»:</b> клиенты, прайс, тон общения, ваши материалы</li>
                 <li><b>«Учёба»:</b> все конспекты и материалы курса в одном месте, Claude отвечает по ним</li>
                 <li><b>«Дом и семья»:</b> бюджет, планы, документы</li>
-              </ul>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Маркетолог за 2 минуты</h3></summary>
-            <div class="item-body">
+              </ul></div></details><details class="row"><summary><span>Маркетолог за 2 минуты</span><i></i></summary><div class="row-body">
             <ul>
               <li><b>Портрет клиента:</b> кто он, чего боится, чего хочет, какие слова его цепляют</li>
               <li><b>Разбор конкурентов:</b> чем продают, где слабы, какую нишу никто не занял</li>
               <li><b>Контент-план на месяц</b> с готовыми текстами первых постов</li>
-            </ul>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Из хаоса — в порядок</h3></summary>
-            <div class="item-body">
+            </ul></div></details><details class="row"><summary><span>Из хаоса — в порядок</span><i></i></summary><div class="row-body">
             <ul>
               <li><b>Голосовое → коммерческое предложение:</b> наговорите мысли как есть, получите готовое КП</li>
               <li><b>Созвон → протокол:</b> расшифровка, решения и задачи по итогам встречи</li>
-            </ul>
-            </div>
-          </details>
-          <details class="item wide live">
-            <summary><h3>Скиллы и свой ИИ-агент</h3></summary>
-            <div class="item-body">
+            </ul></div></details><details class="row"><summary><span>Скиллы и свой ИИ-агент</span><i></i></summary><div class="row-body">
             <p>Сохраняем удачный способ работы как навык, и Claude применяет его сам: «Пост в моём стиле», «Конспект по моему шаблону», «Ответ клиенту».</p>
             <div class="chain">
               <span>проект</span><i>+</i><span>инструкции</span><i>+</i><span>подключения</span><i>+</i><span>скиллы</span><i>=</i><span>агент</span>
             </div>
-            <p>Каждый собирает своего агента под свою задачу и уходит с работающим помощником.</p>
-            </div>
-          </details>
-        </div>
-      </div>
-
-
-      <div class="part">
-        <div class="part-label">
-          <svg class="robot robot-inline pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
-          <span class="num">Блок 4</span>
-          <h3>Claude Code</h3>
-          <p>Создаём то, что раньше делал программист. Каждый выбирает своё.</p>
-        </div>
-        <div class="items">
-          <details class="item">
-            <summary><h3>Сайт</h3></summary>
-            <div class="item-body">
-            <p>Ваш лендинг по ссылке за 10 минут, без знания кода: визитка, страница услуги или продукта.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Интерактивная презентация</h3></summary>
-            <div class="item-body">
-            <p>Презентация для клиентов или партнёров, которую можно листать и открывать по ссылке.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Видеопрезентация</h3></summary>
-            <div class="item-body">
-            <p>Короткий ролик о вашем бизнесе или продукте.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Или своё</h3></summary>
-            <div class="item-body">
+            <p>Каждый собирает своего агента под свою задачу и уходит с работающим помощником.</p></div></details></div>
+</article>
+<article class="bcard dark">
+  <div class="bart"><img class="art a-blob" src="img/blob.png" alt=""></div>
+  <div class="bhead"><span class="chip">Блок 4</span><h3>Claude Code</h3><p>Создаём то, что раньше делал программист. Каждый выбирает своё.</p></div>
+  <div class="rows"><details class="row"><summary><span>Сайт</span><i></i></summary><div class="row-body">
+            <p>Ваш лендинг по ссылке за 10 минут, без знания кода: визитка, страница услуги или продукта.</p></div></details><details class="row"><summary><span>Интерактивная презентация</span><i></i></summary><div class="row-body">
+            <p>Презентация для клиентов или партнёров, которую можно листать и открывать по ссылке.</p></div></details><details class="row"><summary><span>Видеопрезентация</span><i></i></summary><div class="row-body">
+            <p>Короткий ролик о вашем бизнесе или продукте.</p></div></details><details class="row"><summary><span>Или своё</span><i></i></summary><div class="row-body">
             <ul>
               <li><b>Квиз для клиентов:</b> подбирает продукт и собирает заявки</li>
               <li><b>Калькулятор:</b> себестоимость, наценка, точка безубыточности</li>
               <li><b>Анализ продаж из Excel:</b> что продаётся, а что лежит мёртвым грузом</li>
-            </ul>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Блок 5</span>
-          <h3>Claude в Chrome</h3>
-          <p>Claude сам заходит в интернет и работает за вас.</p>
-        </div>
-        <div class="items">
-          <details class="item">
-            <summary><h3>Установка расширения</h3></summary>
-            <div class="item-body">
-            <p>Ставим расширение Claude для Chrome и разрешаем ему работать с сайтами. Claude открывает сайты и соцсети в вашем браузере и работает за вас.</p>
-            </div>
-          </details>
-          <details class="item">
-            <summary><h3>Что он умеет</h3></summary>
-            <div class="item-body">
+            </ul></div></details></div>
+</article>
+<article class="bcard lime">
+  <div class="bart"><img class="art a-splash" src="img/splash.png" alt=""></div>
+  <div class="bhead"><span class="chip">Блок 5</span><h3>Claude в Chrome</h3><p>Claude сам заходит в интернет и работает за вас.</p></div>
+  <div class="rows"><details class="row"><summary><span>Установка расширения</span><i></i></summary><div class="row-body">
+            <p>Ставим расширение Claude для Chrome и разрешаем ему работать с сайтами. Claude открывает сайты и соцсети в вашем браузере и работает за вас.</p></div></details><details class="row"><summary><span>Что он умеет</span><i></i></summary><div class="row-body">
             <ul>
               <li><b>Аудит Инстаграм-страницы</b>, своей или конкурента: что цепляет, что отталкивает, что исправить</li>
               <li>Сбор информации с нескольких сайтов в одну таблицу</li>
-            </ul>
-            </div>
-          </details>
-        </div>
-      </div>
-
-      <div class="part">
-        <div class="part-label">
-          <span class="num">Финал</span>
-          <h3>Ваш личный план</h3>
-        </div>
-        <div class="items">
-          <details class="item wide">
-            <summary><h3>Что передать Claude уже завтра</h3></summary>
-            <div class="item-body">
-            <p>Разбираем задачи каждого — в жизни и в работе. Отвечаю на все вопросы.</p>
-            </div>
-          </details>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="results">
-    <div class="wrap">
-      <div class="sec-head">
-        <p class="eyebrow">Результат</p>
-        <h2>С чем вы уйдёте</h2>
-      </div>
-      <ul class="results">
-        <li>Claude, установленный и настроенный на компьютере и телефоне</li>
-        <li>Подключённые Google Диск, Календарь и Notion</li>
-        <li>Портрет клиента и контент-план для вашего бизнеса</li>
-        <li>Свои проекты в Claude: для бизнеса и для жизни</li>
-        <li>Скиллы под ваши задачи и собственный ИИ-агент</li>
-        <li>Свой сайт, интерактивная презентация или видео, созданные в Claude Code</li>
-        <li>Расширение Claude для Chrome, установленное и настроенное</li>
-        <li>Личный план, что делегировать ИИ</li>
-        <li>Чат поддержки в течение недели после практикума</li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="who">
-    <div class="wrap two">
-      <div class="sec-head" style="margin-bottom:0">
-        <p class="eyebrow">Для кого</p>
-        <h2>Технические знания не нужны</h2>
-        <p class="muted">Если вы умеете пользоваться телефоном и почтой, вы справитесь.</p>
-      </div>
-      <ul class="who">
-        <li>Предприниматели и владельцы бизнеса</li>
-        <li>Маркетологи, SMM-специалисты, таргетологи</li>
-        <li>Эксперты, наставники, блогеры</li>
-        <li>Все, кто хочет, чтобы ИИ экономил время и в работе, и в жизни</li>
-      </ul>
-    </div>
-  </section>
-
-  <section id="bring">
-    <div class="wrap two">
-      <div class="sec-head" style="margin-bottom:0">
-        <p class="eyebrow">Подготовка</p>
-        <h2>Что взять с собой</h2>
-      </div>
-      <div style="display:grid;gap:14px">
-        <p>Ноутбук с зарядкой, телефон, доступ к своей почте Google и браузер Google Chrome на ноутбуке.</p>
-        <p class="muted">За пару дней до встречи пришлю памятку, как подготовиться, чтобы всё установилось быстро.</p>
-      </div>
-    </div>
-  </section>
-
-  <section id="price">
-    <div class="wrap">
-      <div class="sec-head">
-        <p class="eyebrow">Стоимость</p>
-        <h2>Участие в практикуме</h2>
-      </div>
-      <div class="price-grid">
-        <div class="tier main">
-          <span class="label">Практикум целиком</span>
-          <span class="sum">5 000 ₽</span>
-          <span>Около 3,5 часов практики и неделя поддержки в чате</span>
-        </div>
-      </div>
-      <div class="signup">
-        <svg class="robot robot-wave pop" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
-        <p class="seats">Всего 4 места: группа маленькая, чтобы я успела помочь каждому.</p>
-        <p class="muted">Выберите среду или субботу и напишите мне в WhatsApp. Место закрепляется предоплатой 5 000 ₽, я подскажу, как её внести.</p>
-        <a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Написать в WhatsApp</a>
-        <div class="contact">
-          <p class="muted">Или позвоните:</p>
-          <a class="phone" href="tel:+79248604162">8 924 860-41-62</a>
-          <p class="muted">Место встречи пришлю в личном сообщении после записи.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-</main>
-
-<footer>
-  <div class="wrap"><svg class="spark" viewBox="0 0 100 100" aria-hidden="true"><use href="#spark"/></svg> Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</div>
-</footer>
-
+            </ul></div></details></div>
+</article>
+<article class="bcard gray">
+  <div class="bart"><img class="art a-flower" src="img/flower.png" alt=""></div>
+  <div class="bhead"><span class="chip">Финал</span><h3>Ваш личный план</h3><p>Что передать Claude уже завтра</p></div>
+  <div class="rows"><details class="row"><summary><span>Что передать Claude уже завтра</span><i></i></summary><div class="row-body"><p>Разбираем задачи каждого — в жизни и в работе. Отвечаю на все вопросы.</p></div></details></div>
+</article></div>
+ </section>
+ <section class="sec" id="dates">
+  <h2>Выберите дату</h2>
+  <div class="table">
+   <div class="trow h"><span>Когда</span><span>Время</span><span>Где</span><span></span></div>
+   <div class="trow"><b>Среда, 14 октября</b><span>16:30</span><span>Адрес пришлю после записи</span><a class="go" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20" aria-label="Записаться"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+   <div class="trow"><b>Суббота, 17 октября</b><span>10:00</span><span>Адрес пришлю после записи</span><a class="go" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20" aria-label="Записаться"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+  </div>
+ </section>
+ <section class="sec" id="results">
+  <div class="two">
+   <div class="box w"><h3>С чем вы уйдёте</h3>
+    <ul class="checks">
+     <li>Claude, установленный и настроенный на компьютере и телефоне</li>
+     <li>Подключённые Google Диск, Календарь и Notion</li>
+     <li>Портрет клиента и контент-план для вашего бизнеса</li>
+     <li>Свои проекты в Claude: для бизнеса и для жизни</li>
+     <li>Скиллы под ваши задачи и собственный ИИ-агент</li>
+     <li>Свой сайт, интерактивная презентация или видео, созданные в Claude Code</li>
+     <li>Расширение Claude для Chrome</li>
+     <li>Личный план, что делегировать ИИ</li>
+     <li>Чат поддержки в течение недели после практикума</li>
+    </ul></div>
+   <div class="box g" id="who"><h3>Технические знания не нужны</h3>
+    <p style="margin-bottom:16px;color:#444">Если вы умеете пользоваться телефоном и почтой, вы справитесь.</p>
+    <div class="tags"><span>Предприниматели и владельцы бизнеса</span><span>Маркетологи, SMM, таргетологи</span><span>Эксперты, наставники, блогеры</span><span>Все, кто хочет, чтобы ИИ экономил время</span></div>
+    <h3 style="margin:26px 0 10px;font-size:22px">Что взять с собой</h3>
+    <p style="color:#444;font-size:15px">Ноутбук с зарядкой, телефон, доступ к почте Google и браузер Google Chrome на ноутбуке.</p></div>
+  </div>
+ </section>
+ <section class="sec" id="price">
+  <div class="price">
+   <svg class="bot" viewBox="0 0 160 180" aria-hidden="true"><use href="#bot"/></svg>
+   <span class="chip">Стоимость</span>
+   <div class="sum">5 000 ₽</div>
+   <p>Около 3,5 часов практики и неделя поддержки в чате. Всего 4 места: группа маленькая, чтобы я успела помочь каждому. Место закрепляется предоплатой, напишите мне в WhatsApp, и я подскажу, как её внести.</p>
+   <div class="row2"><a class="btn" href="https://wa.me/79248604162?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5%21%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%B7%D0%B0%D0%BF%D0%B8%D1%81%D0%B0%D1%82%D1%8C%D1%81%D1%8F%20%D0%BD%D0%B0%20%D0%BF%D1%80%D0%B0%D0%BA%D1%82%D0%B8%D0%BA%D1%83%D0%BC%20%D0%BF%D0%BE%20Claude.%20%D0%9C%D0%BD%D0%B5%20%D0%BF%D0%BE%D0%B4%D1%85%D0%BE%D0%B4%D0%B8%D1%82%3A%20">Написать в WhatsApp</a><a class="phone" href="tel:+79248604162">8 924 860-41-62</a></div>
+   <img class="chrome ex" src="img/excl.png" alt="">
+  </div>
+ </section>
+ <footer><svg viewBox="0 0 100 100"><use href="#spark"/></svg>Практикум «Claude: ваш личный ИИ-помощник в бизнесе и жизни» · ведущая Евгения Лугинова</footer>
 <script>
-(function () {
-  var root = document.documentElement;
-  if (!('IntersectionObserver' in window)) { root.classList.remove('js'); return; }
-  var items = document.querySelectorAll('.part-label, details.item, .results li, .tier, .signup > *:not(.pop)');
-  items.forEach(function (el, i) { el.classList.add('reveal'); el.style.transitionDelay = (i % 3) * 80 + 'ms'; });
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) {
-      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-    });
-  }, { threshold: 0.15 });
-  document.querySelectorAll('.reveal, .pop').forEach(function (el) { io.observe(el); });
-})();
+(function(){var root=document.documentElement;
+if(!('IntersectionObserver' in window)){root.classList.remove('js');return;}
+var els=document.querySelectorAll('.fact,.bcard,.table,.box,.price,.statement>h2,.statement>p,.statement>a,.sec>h2');
+els.forEach(function(el,i){el.classList.add('reveal');el.style.transitionDelay=(i%3)*80+'ms';});
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
+els.forEach(function(el){io.observe(el);});})();
 </script>
-
+</div></body></html>
