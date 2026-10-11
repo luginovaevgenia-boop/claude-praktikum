@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Тест Средиземья</title>
+<meta name="description" content="Интерактивный тест по «Властелину колец»: 12 вопросов, звания и таблица результатов.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    --bg: #0d0b08;
+    --surface: #17130d;
+    --surface-2: #211b12;
+    --line: #3d3220;
+    --fg: #f3e9d2;
+    --muted: #bfae8c;
+    --gold: #e0b44c;
+    --gold-soft: rgba(224, 180, 76, .14);
+    --fire: #ff7a3c;
+    --ok: #7fc47a;
+    --ok-soft: rgba(127, 196, 122, .14);
+    --bad: #e2675a;
+    --bad-soft: rgba(226, 103, 90, .14);
+    --display: "Cormorant SC", Georgia, serif;
+    --body: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(224, 180, 76, .10), transparent 60%),
+      radial-gradient(800px 500px at 50% 120%, rgba(255, 122, 60, .08), transparent 60%),
+      var(--bg);
+    color: var(--fg);
+    font: 400 20px/1.5 var(--body);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .02em; margin: 0; }
+  h1 { font-size: clamp(34px, 8vw, 54px); line-height: 1.05; text-align: center; color: var(--gold); text-shadow: 0 0 24px rgba(224, 180, 76, .35); }
+  .sub { text-align: center; color: var(--muted); font-style: italic; margin: 10px 0 0; }
+  .card {
+    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px 20px;
+    margin-top: 24px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .03);
+  }
+  .screen { display: none; animation: rise .45s ease both; }
+  .screen.on { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* Кольцо */
+  .ring { display: block; width: 168px; height: 168px; margin: 8px auto 18px; }
+  .ring .band { animation: spin 26s linear infinite; transform-origin: 50% 50%; }
+  .ring .glow { animation: pulse 3.2s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  label { display: block; font-family: var(--display); font-size: 18px; color: var(--muted); margin-bottom: 8px; }
+  input[type=text] {
+    width: 100%; font: inherit; color: var(--fg);
+    background: #0f0c08; border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; outline: none;
+  }
+  input[type=text]:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: 700 20px var(--display); letter-spacing: .04em;
+    color: #1d1408; background: linear-gradient(180deg, #f1cf74, var(--gold));
+    border: 0; border-radius: 12px; padding: 13px 22px; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(224, 180, 76, .25);
+    transition: transform .12s ease, filter .12s ease;
+  }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--gold); border: 1px solid var(--line); box-shadow: none; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .row .btn { flex: 1 1 200px; }
+  .hint { color: var(--muted); font-size: 17px; margin: 10px 0 0; }
+
+  /* Вопрос */
+  .top { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--display); color: var(--muted); font-size: 18px; }
+  .top b { color: var(--gold); }
+  .bar { height: 6px; background: #0f0c08; border-radius: 99px; overflow: hidden; margin: 10px 0 0; border: 1px solid var(--line); }
+  .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--fire), var(--gold)); transition: width .4s ease; }
+  .q { font-size: clamp(23px, 5vw, 28px); line-height: 1.3; font-weight: 600; margin: 4px 0 18px; }
+  .opts { display: grid; gap: 10px; }
+  .opt {
+    text-align: left; font: inherit; color: var(--fg); cursor: pointer;
+    background: #120f0a; border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 16px; display: flex; gap: 12px; align-items: center;
+    transition: border-color .15s, background .15s, transform .12s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--gold); background: var(--gold-soft); }
+  .opt:active:not(:disabled) { transform: scale(.99); }
+  .opt .k { font-family: var(--display); color: var(--gold); width: 26px; height: 26px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: 16px; }
+  .opt:disabled { cursor: default; }
+  .opt.right { border-color: var(--ok); background: var(--ok-soft); }
+  .opt.right .k { color: var(--ok); border-color: var(--ok); }
+  .opt.wrong { border-color: var(--bad); background: var(--bad-soft); animation: shake .35s; }
+  .opt.wrong .k { color: var(--bad); border-color: var(--bad); }
+  .opt.dim { opacity: .5; }
+  @keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .fact { margin-top: 16px; padding: 12px 14px; border-left: 3px solid var(--gold); background: var(--gold-soft); border-radius: 0 10px 10px 0; font-style: italic; display: none; }
+  .fact.on { display: block; animation: rise .3s ease both; }
+
+  /* Итог */
+  .score { text-align: center; }
+  .score .big { font-family: var(--display); font-size: 72px; line-height: 1; color: var(--gold); text-shadow: 0 0 30px rgba(224, 180, 76, .4); }
+  .score .rank { font-family: var(--display); font-size: 28px; margin-top: 10px; }
+  .score p { color: var(--muted); margin: 8px 0 0; }
+  .status { text-align: center; font-size: 17px; color: var(--muted); margin-top: 12px; min-height: 1.5em; }
+
+  /* Таблица */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0 6px; }
+  .stat { background: #120f0a; border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-family: var(--display); font-size: 28px; color: var(--gold); line-height: 1.1; }
+  .stat span { font-size: 15px; color: var(--muted); }
+  .board { list-style: none; padding: 0; margin: 12px 0 0; }
+  .board li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+  .board li:last-child { border-bottom: 0; }
+  .board .n { font-family: var(--display); color: var(--muted); text-align: center; }
+  .board li:nth-child(1) .n { color: #f1cf74; }
+  .board li:nth-child(2) .n { color: #d6d6d6; }
+  .board li:nth-child(3) .n { color: #d08a4e; }
+  .board .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .board .who small { display: block; color: var(--muted); font-size: 15px; }
+  .board .pts { font-family: var(--display); color: var(--gold); font-size: 22px; }
+  .board li.me { background: var(--gold-soft); border-radius: 10px; }
+  .empty { color: var(--muted); text-align: center; font-style: italic; padding: 16px 0; }
+  .note { font-size: 15px; color: var(--muted); text-align: center; margin-top: 12px; }
+
+  /* Искры */
+  .spark { position: fixed; top: -10px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); pointer-events: none; box-shadow: 0 0 8px var(--gold); animation: fall linear forwards; }
+  @keyframes fall { to { transform: translateY(110vh) translateX(var(--dx)); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .spark { display: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <!-- Старт -->
+  <section class="screen on" id="s-start">
+    <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff0b8"/><stop offset=".45" stop-color="#e0b44c"/><stop offset="1" stop-color="#8a5e17"/>
+        </linearGradient>
+        <path id="arc" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/>
+      </defs>
+      <circle class="glow" cx="100" cy="100" r="80" fill="none" stroke="#ff7a3c" stroke-width="10" opacity=".7" style="filter: blur(8px)"/>
+      <circle cx="100" cy="100" r="70" fill="none" stroke="url(#g)" stroke-width="16"/>
+      <g class="band">
+        <text font-family="Georgia, serif" font-size="11" fill="#ff8a4a" letter-spacing="2.5">
+          <textPath href="#arc">ᚨᛋ ᚾᚨᛉᚷ ᛞᚢᚱᛒᚨᛏᚢᛚᚢᚴ · ᚨᛋ ᚾᚨᛉᚷ ᚷᛁᛗᛒᚨᛏᚢᛚ · ᚨᛋ ᚾᚨᛉᚷ ᚦᚱᚨᚴᚨᛏᚢᛚᚢᚴ ·</textPath>
+        </text>
+      </g>
+    </svg>
+    <h1>Тест Средиземья</h1>
+    <p class="sub">Двенадцать вопросов о «Властелине колец». Достоин ли ты войти в Братство?</p>
+
+    <div class="card">
+      <label for="name">Как тебя зовут, путник?</label>
+      <input type="text" id="name" maxlength="30" autocomplete="nickname" placeholder="Например, Арвен из Ривенделла">
+      <div class="row">
+        <button class="btn" id="go" disabled>Отправиться в путь</button>
+        <button class="btn ghost" id="to-board">Таблица результатов</button>
+      </div>
+      <p class="hint">После каждого ответа — правильный вариант и интересный факт.</p>
+    </div>
+  </section>
+
+  <!-- Вопрос -->
+  <section class="screen" id="s-quiz">
+    <div class="card">
+      <div class="top"><span>Вопрос <b id="qn">1</b> из <span id="qt">12</span></span><span>Верно: <b id="sc">0</b></span></div>
+      <div class="bar"><i id="bar"></i></div>
+    </div>
+    <div class="card">
+      <p class="q" id="q"></p>
+      <div class="opts" id="opts"></div>
+      <div class="fact" id="fact"></div>
+      <div class="row" id="next-row" hidden><button class="btn" id="next">Дальше</button></div>
+    </div>
+  </section>
+
+  <!-- Итог -->
+  <section class="screen" id="s-end">
+    <div class="card score">
+      <div class="big" id="final"></div>
+      <div class="rank" id="rank"></div>
+      <p id="rank-text"></p>
+      <div class="status" id="status"></div>
+      <div class="row">
+        <button class="btn" id="again">Пройти ещё раз</button>
+        <button class="btn ghost" id="end-board">Таблица результатов</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Таблица -->
+  <section class="screen" id="s-board">
+    <h1>Летопись героев</h1>
+    <p class="sub">Все, кто прошёл испытание</p>
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><b id="st-n">—</b><span>прошли</span></div>
+        <div class="stat"><b id="st-avg">—</b><span>средний балл</span></div>
+        <div class="stat"><b id="st-max">—</b><span>рекорд</span></div>
+      </div>
+      <ol class="board" id="board"></ol>
+      <p class="note" id="board-note"></p>
+      <div class="row"><button class="btn" id="board-back">К началу</button></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* Адрес веб-приложения Google Apps Script, куда сохраняются результаты.
+   Как его получить — в файле lotr/README.md. Пока адрес пустой,
+   результаты хранятся только в браузере того, кто проходит тест. */
+const RESULTS_URL = '';
+
+const QUESTIONS = [
+  { q: 'Каково настоящее имя Голлума?',
+    a: ['Смеагол', 'Деагол', 'Гриима', 'Гамлинг'], fact: 'Смеагол был из речного народа, родственного хоббитам. Кольцо он получил, убив своего друга Деагола.' },
+  { q: 'Сколько Колец Власти было дано людям?',
+    a: ['Девять', 'Семь', 'Три', 'Двенадцать'], fact: 'Девять колец получили короли людей — и все они стали назгулами, Кольценосцами-призраками.' },
+  { q: 'Какое слово открыло Врата Мории?',
+    a: ['Мэллон', 'Элендиль', 'Намариэ', 'Ангмар'], fact: 'Надпись гласила: «Скажи, друг, и войди». «Мэллон» по-эльфийски значит «друг» — разгадал Гэндальф с подсказки Фродо.' },
+  { q: 'Как называется меч Арагорна, перекованный из обломков Нарсила?',
+    a: ['Андурил', 'Жало', 'Гламдринг', 'Оркрист'], fact: 'Андурил — «Пламя Запада». Его перековали эльфы Ривенделла перед выходом Братства.' },
+  { q: 'Кто сразил Короля-чародея Ангмара?',
+    a: ['Эовин', 'Арагорн', 'Леголас', 'Теоден'], fact: '«Ни один муж не убьёт его» — гласило пророчество. Эовин помог хоббит Мерри, ударив назгула клинком из Курганов.' },
+  { q: 'Что Галадриэль подарила Фродо в Лотлориэне?',
+    a: ['Фиал со светом звезды Эарендила', 'Эльфийский плащ с брошью-листом', 'Кольцо Нэнья', 'Мифриловую кольчугу'], fact: 'Фиал спас Фродо и Сэма в логове Шелоб. А мифриловую кольчугу Фродо подарил Бильбо.' },
+  { q: 'Как зовут коня Гэндальфа?',
+    a: ['Светозар', 'Брего', 'Арод', 'Хасуфэл'], fact: 'Светозар (Shadowfax) — вожак меарас, коней Рохана, который сам выбрал Гэндальфа.' },
+  { q: 'Сколько лет исполнилось Бильбо на его прощальном празднике?',
+    a: ['111', '99', '100', '128'], fact: '«Одиннадцатьдесят один» — так говорили хоббиты. В тот же день Фродо исполнилось 33, хоббитское совершеннолетие.' },
+  { q: 'Что попросил Гимли в подарок у Галадриэли?',
+    a: ['Один её волос', 'Эльфийский лук', 'Горсть лориэнской земли', 'Кинжал работы нолдор'], fact: 'Гимли попросил один волос, а Галадриэль подарила ему три. Сэму она дала шкатулку с землёй из своего сада.' },
+  { q: 'Как зовут старейшего из энтов, пастыря Фангорна?',
+    a: ['Древобород', 'Скоростень', 'Ветла', 'Том Бомбадил'], fact: 'Древобород — «старейший из живущих под солнцем» по словам Гэндальфа. Скоростень — единственный «торопливый» энт.' },
+  { q: 'Где было уничтожено Кольцо Всевластья?',
+    a: ['В Роковой горе — Ородруине', 'В Барад-Дуре', 'В Минас-Моргуле', 'В пещере Хельма'], fact: 'Кольцо можно было уничтожить только в огне Роковой горы, где Саурон его выковал.' },
+  { q: 'Кем стал Сэм Скромби после возвращения в Шир?',
+    a: ['Мэром Шира', 'Таном Шира', 'Хранителем Ривенделла', 'Королём Арнора'], fact: 'Сэм семь раз избирался мэром. Таном Шира стал Пиппин, а Мерри — хозяином Бэкланда.' },
+];
+
+const RANKS = [
+  { min: 12, title: 'Мудрец из Истари',      text: 'Ни одной ошибки! Даже Гэндальф бы снял шляпу.' },
+  { min: 10, title: 'Владыка эльфов',        text: 'Ты помнишь Средиземье, будто жил в Ривенделле тысячу лет.' },
+  { min: 7,  title: 'Следопыт Севера',       text: 'Острый глаз и крепкая память. Арагорн взял бы тебя в дозор.' },
+  { min: 4,  title: 'Хоббит-путешественник', text: 'Ты уже вышел за ворота Шира, но дорога ещё длинна.' },
+  { min: 0,  title: 'Житель Бри',            text: 'Пора перечитать книгу у камина «Гарцующего пони».' },
+];
+
+const $ = id => document.getElementById(id);
+const LETTERS = ['А', 'Б', 'В', 'Г'];
+let order = [], i = 0, score = 0, player = '', lastId = null;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+const shuffle = arr => arr.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(p => p[1]);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---- Тест ---- */
+$('name').addEventListener('input', e => { $('go').disabled = !e.target.value.trim(); });
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) start(); });
+$('go').onclick = start;
+$('again').onclick = () => show('s-start');
+$('next').onclick = () => { i++; i < order.length ? ask() : finish(); };
+
+function start() {
+  player = $('name').value.trim().slice(0, 30);
+  order = shuffle(QUESTIONS);
+  i = 0; score = 0;
+  $('qt').textContent = order.length;
+  show('s-quiz');
+  ask();
+}
+
+function ask() {
+  const item = order[i];
+  $('qn').textContent = i + 1;
+  $('sc').textContent = score;
+  $('bar').style.width = (i / order.length * 100) + '%';
+  $('q').textContent = item.q;
+  $('fact').classList.remove('on');
+  $('next-row').hidden = true;
+  const box = $('opts');
+  box.innerHTML = '';
+  shuffle(item.a.map((text, idx) => ({ text, right: idx === 0 }))).forEach((o, k) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = `<span class="k">${LETTERS[k]}</span><span>${esc(o.text)}</span>`;
+    b.dataset.right = o.right ? '1' : '';
+    b.onclick = () => pick(b);
+    box.appendChild(b);
+  });
+}
+
+function pick(btn) {
+  const all = [...$('opts').children];
+  all.forEach(b => {
+    b.disabled = true;
+    if (b.dataset.right) b.classList.add('right');
+    else if (b !== btn) b.classList.add('dim');
+  });
+  const ok = !!btn.dataset.right;
+  if (ok) { score++; sparks(14); } else btn.classList.add('wrong');
+  $('sc').textContent = score;
+  $('bar').style.width = ((i + 1) / order.length * 100) + '%';
+  $('fact').textContent = (ok ? 'Верно! ' : 'Увы. ') + order[i].fact;
+  $('fact').classList.add('on');
+  $('next').textContent = i + 1 < order.length ? 'Дальше' : 'Узнать звание';
+  $('next-row').hidden = false;
+  $('next').focus({ preventScroll: true });
+}
+
+function finish() {
+  const total = order.length;
+  const r = RANKS.find(x => score >= x.min);
+  $('final').textContent = `${score} / ${total}`;
+  $('rank').textContent = r.title;
+  $('rank-text').textContent = r.text;
+  show('s-end');
+  if (score >= total * .7) sparks(70);
+  save({ name: player, score, total, rank: r.title, date: new Date().toISOString() });
+}
+
+/* ---- Результаты ---- */
+const LOCAL_KEY = 'lotr-quiz-results';
+const readLocal = () => { try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || []; } catch (e) { return []; } };
+const writeLocal = list => { try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list)); } catch (e) {} };
+
+async function save(res) {
+  lastId = res.date;
+  writeLocal([...readLocal(), res].slice(-200));
+  if (!RESULTS_URL) { $('status').textContent = 'Результат сохранён.'; return; }
+  $('status').textContent = 'Записываем в летопись…';
+  try {
+    // text/plain без заголовков — «простой» запрос, Google Apps Script принимает его без CORS-проверки
+    await fetch(RESULTS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(res) });
+    $('status').textContent = 'Результат записан в летопись героев ✦';
+  } catch (e) {
+    $('status').textContent = 'Не удалось отправить результат — проверь интернет.';
+  }
+}
+
+async function loadResults() {
+  if (!RESULTS_URL) return { list: readLocal(), shared: false };
+  try {
+    const r = await fetch(RESULTS_URL + '?t=' + Date.now());
+    const data = await r.json();
+    return { list: Array.isArray(data) ? data : [], shared: true };
+  } catch (e) {
+    return { list: readLocal(), shared: false, failed: true };
+  }
+}
+
+async function openBoard() {
+  show('s-board');
+  $('board').innerHTML = '<li class="empty" style="display:block">Листаем летопись…</li>';
+  $('board-note').textContent = '';
+  const { list, shared, failed } = await loadResults();
+  const rows = list
+    .map(x => ({ name: String(x.name || 'Безымянный'), score: +x.score || 0, total: +x.total || 12, rank: x.rank || '', date: x.date || '' }))
+    .sort((a, b) => b.score - a.score || String(a.date).localeCompare(String(b.date)));
+
+  $('st-n').textContent = rows.length || '0';
+  $('st-avg').textContent = rows.length ? (rows.reduce((s, x) => s + x.score, 0) / rows.length).toFixed(1) : '—';
+  $('st-max').textContent = rows.length ? rows[0].score : '—';
+
+  $('board').innerHTML = rows.length
+    ? rows.slice(0, 50).map((x, k) => {
+        const d = x.date ? new Date(x.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '';
+        return `<li class="${x.date === lastId ? 'me' : ''}"><span class="n">${k + 1}</span>
+          <span class="who">${esc(x.name)}<small>${esc(x.rank)}${d ? ' · ' + esc(d) : ''}</small></span>
+          <span class="pts">${x.score}/${x.total}</span></li>`;
+      }).join('')
+    : '<li class="empty" style="display:block">Пока никто не прошёл испытание. Стань первым!</li>';
+
+  $('board-note').textContent = shared
+    ? (rows.length > 50 ? `Показаны 50 лучших из ${rows.length}.` : '')
+    : failed
+      ? 'Общая летопись сейчас недоступна — показаны результаты с этого устройства.'
+      : 'Показаны результаты, пройденные на этом устройстве.';
+}
+$('to-board').onclick = openBoard;
+$('end-board').onclick = openBoard;
+$('board-back').onclick = () => show('s-start');
+
+/* ---- Искры ---- */
+function sparks(n) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (let k = 0; k < n; k++) {
+    const s = document.createElement('i');
+    s.className = 'spark';
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px');
+    s.style.animationDuration = (1.4 + Math.random() * 1.6) + 's';
+    s.style.animationDelay = (Math.random() * .4) + 's';
+    if (Math.random() < .35) s.style.background = '#ff7a3c';
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 3600);
+  }
+}
+</script>
+</body>
+</html>
