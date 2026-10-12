@@ -7,10 +7,11 @@ import asyncio
 import hashlib
 import logging
 import os
+import re
 import sqlite3
 from urllib.parse import urlencode
 
-from aiohttp import web
+import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -28,7 +29,6 @@ ROBOKASSA_PASS1 = os.environ["ROBOKASSA_PASS1"]  # для ссылки на оп
 ROBOKASSA_PASS2 = os.environ["ROBOKASSA_PASS2"]  # для проверки ResultURL
 ROBOKASSA_TEST = os.getenv("ROBOKASSA_TEST", "1") == "1"
 HASH = getattr(hashlib, os.getenv("ROBOKASSA_HASH", "md5").lower())
-WEB_PORT = int(os.getenv("PORT", "8080"))
 WHATSAPP_GROUP_LINK = os.environ["WHATSAPP_GROUP_LINK"]
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 0)
 PRICE_RUB = int(os.getenv("PRICE_RUB", "5000"))
@@ -212,75 +212,88 @@ async def send_payment_link(c: CallbackQuery):
     await c.message.answer(
         f"Дата: <b>{DATES[date_key]}</b>\nСумма: <b>{PRICE_RUB} ₽</b>\n\n"
         "Нажмите кнопку, оплатите на странице Робокассы — и ссылка на WhatsApp-группу "
-        "придёт сюда автоматически в течение минуты.",
+        "придёт сюда автоматически в течение минуты (или нажмите «Я оплатил(а)»).",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[[InlineKeyboardButton(text=f"💳 Оплатить {PRICE_RUB} ₽", url=payment_url(inv_id))]]
+            inline_keyboard=[
+                [InlineKeyboardButton(text=f"💳 Оплатить {PRICE_RUB} ₽", url=payment_url(inv_id))],
+                [InlineKeyboardButton(text="✅ Я оплатил(а)", callback_data=f"chk:{inv_id}")],
+            ]
         ),
     )
 
 
-async def robokassa_result(request: web.Request) -> web.Response:
-    """ResultURL: Робокасса вызывает его после успешной оплаты."""
-    data = {**request.query, **(await request.post())}
-    out_sum, inv_id, sig = data.get("OutSum", ""), data.get("InvId", ""), data.get("SignatureValue", "")
-    expected = HASH(f"{out_sum}:{inv_id}:{ROBOKASSA_PASS2}".encode()).hexdigest()
-    if sig.lower() != expected.lower() or not inv_id.isdigit():
-        logging.warning("Robokassa: неверная подпись, InvId=%s", inv_id)
-        return web.Response(status=400, text="bad signature")
+STATE_URL = "https://auth.robokassa.ru/Merchant/WebService/Service.asmx/OpStateExt"
+
+
+async def is_paid(session: aiohttp.ClientSession, inv_id: int) -> bool:
+    """Спрашиваем у Робокассы статус счёта (код 100 = оплачен)."""
+    sig = HASH(f"{ROBOKASSA_LOGIN}:{inv_id}:{ROBOKASSA_PASS2}".encode()).hexdigest()
+    async with session.get(
+        STATE_URL,
+        params={"MerchantLogin": ROBOKASSA_LOGIN, "InvoiceID": inv_id, "Signature": sig},
+    ) as r:
+        xml = await r.text()
+    m = re.search(r"<State>\s*<Code>(\d+)</Code>", xml)
+    return bool(m and m.group(1) == "100")
+
+
+async def confirm_order(bot: Bot, inv_id: int) -> bool:
+    """Помечает заказ оплаченным и отправляет ссылку. True, если подтвердили сейчас."""
     with db() as con:
         row = con.execute(
-            "SELECT user_id, username, full_name, date_key, amount, paid FROM orders WHERE inv_id=?",
-            (int(inv_id),),
+            "SELECT user_id, username, full_name, date_key, amount FROM orders WHERE inv_id=? AND paid=0",
+            (inv_id,),
         ).fetchone()
         if not row:
-            return web.Response(status=404, text="no such order")
-        user_id, username, full_name, date_key, amount, already = row
-        if float(out_sum) < amount:
-            return web.Response(status=400, text="wrong amount")
-        if not already:
-            con.execute(
-                "UPDATE orders SET paid=1, paid_at=CURRENT_TIMESTAMP WHERE inv_id=?", (int(inv_id),)
-            )
-    if not already:
-        bot: Bot = request.app["bot"]
-        await bot.send_message(
-            user_id,
-            TEXT_PAID.format(date=DATES[date_key], link=WHATSAPP_GROUP_LINK),
-            parse_mode="HTML",
-        )
-        if ADMIN_ID:
-            await bot.send_message(
-                ADMIN_ID,
-                f"💰 Оплата {out_sum} ₽\n{full_name} (@{username or '—'}, id {user_id})\n"
-                f"Дата: {DATES[date_key]}",
-            )
-    return web.Response(text=f"OK{inv_id}")  # Робокасса ждёт именно такой ответ
-
-
-async def robokassa_return(request: web.Request) -> web.Response:
-    """SuccessURL/FailURL: страница, куда человек попадает после оплаты."""
-    return web.Response(
-        text="Спасибо! Вернитесь в Telegram: ссылка на WhatsApp-группу придёт в чат с ботом.",
-        content_type="text/plain",
-        charset="utf-8",
+            return False
+        con.execute("UPDATE orders SET paid=1, paid_at=CURRENT_TIMESTAMP WHERE inv_id=?", (inv_id,))
+    user_id, username, full_name, date_key, amount = row
+    await bot.send_message(
+        user_id, TEXT_PAID.format(date=DATES[date_key], link=WHATSAPP_GROUP_LINK), parse_mode="HTML"
     )
+    if ADMIN_ID:
+        await bot.send_message(
+            ADMIN_ID,
+            f"💰 Оплата {amount} ₽\n{full_name} (@{username or '—'}, id {user_id})\nДата: {DATES[date_key]}",
+        )
+    return True
+
+
+async def poll_payments(bot: Bot):
+    """Каждые 15 секунд проверяет неоплаченные заказы за последние сутки."""
+    async with aiohttp.ClientSession() as session:
+        while True:
+            try:
+                with db() as con:
+                    pending = [r[0] for r in con.execute(
+                        "SELECT inv_id FROM orders WHERE paid=0 AND created_at > datetime('now','-1 day')"
+                    )]
+                for inv_id in pending:
+                    if await is_paid(session, inv_id):
+                        await confirm_order(bot, inv_id)
+            except Exception:
+                logging.exception("poll_payments")
+            await asyncio.sleep(15)
+
+
+@dp.callback_query(F.data.startswith("chk:"))
+async def check_now(c: CallbackQuery, bot: Bot):
+    inv_id = int(c.data.split(":", 1)[1])
+    async with aiohttp.ClientSession() as session:
+        paid = await is_paid(session, inv_id)
+    if paid:
+        await c.answer()
+        await confirm_order(bot, inv_id)
+    else:
+        await c.answer("Оплата пока не поступила. Подождите минуту и нажмите ещё раз.", show_alert=True)
 
 
 async def main():
     logging.basicConfig(level=logging.INFO)
     bot = Bot(BOT_TOKEN)
     db().close()
-    app = web.Application()
-    app["bot"] = bot
-    app.add_routes([
-        web.route("*", "/robokassa/result", robokassa_result),
-        web.get("/robokassa/success", robokassa_return),
-        web.get("/robokassa/fail", robokassa_return),
-    ])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    await web.TCPSite(runner, "0.0.0.0", WEB_PORT).start()
+    asyncio.create_task(poll_payments(bot))
     await dp.start_polling(bot)
 
 
