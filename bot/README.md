@@ -4,9 +4,14 @@
 
 ## Запуск
 1. Создайте бота в @BotFather, получите `BOT_TOKEN`.
-2. Там же: Bot Settings → Payments → подключите ЮKassa (или другого провайдера), получите `PROVIDER_TOKEN` (сначала тестовый).
-3. `cp .env.example .env` и заполните значения.
-4. `pip install -r requirements.txt && python bot.py`
+2. `cp .env.example .env` и заполните значения (данные магазина — в кабинете Робокассы).
+3. `pip install -r requirements.txt && python bot.py`
+4. В кабинете Робокассы (Технические настройки магазина) укажите, где `https://ваш-домен` — публичный адрес сервера с ботом:
+   - Result URL: `https://ваш-домен/robokassa/result` (метод POST или GET)
+   - Success URL: `https://ваш-домен/robokassa/success`
+   - Fail URL: `https://ваш-домен/robokassa/fail`
+   - алгоритм подписи — тот же, что в `ROBOKASSA_HASH`
+5. Проверьте оплату в тестовом режиме (`ROBOKASSA_TEST=1`), потом переключите на `0`.
 
-Оплаты сохраняются в `payments.db`, вам в Telegram приходит уведомление о каждой оплате (`ADMIN_ID`).
+Заказы и оплаты хранятся в `payments.db`, вам в Telegram приходит уведомление о каждой оплате (`ADMIN_ID`).
 Тексты — в начале `bot.py`.

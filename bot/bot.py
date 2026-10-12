@@ -4,30 +4,34 @@
 -> выбор даты -> оплата -> ссылка на WhatsApp-группу.
 """
 import asyncio
-import json
+import hashlib
 import logging
 import os
 import sqlite3
+from urllib.parse import urlencode
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
     CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    LabeledPrice,
     Message,
-    PreCheckoutQuery,
 )
 from dotenv import load_dotenv
 
 load_dotenv()
 BOT_TOKEN = os.environ["BOT_TOKEN"]
-PROVIDER_TOKEN = os.environ["PROVIDER_TOKEN"]
+ROBOKASSA_LOGIN = os.environ["ROBOKASSA_LOGIN"]
+ROBOKASSA_PASS1 = os.environ["ROBOKASSA_PASS1"]  # для ссылки на оплату
+ROBOKASSA_PASS2 = os.environ["ROBOKASSA_PASS2"]  # для проверки ResultURL
+ROBOKASSA_TEST = os.getenv("ROBOKASSA_TEST", "1") == "1"
+HASH = getattr(hashlib, os.getenv("ROBOKASSA_HASH", "md5").lower())
+WEB_PORT = int(os.getenv("PORT", "8080"))
 WHATSAPP_GROUP_LINK = os.environ["WHATSAPP_GROUP_LINK"]
 ADMIN_ID = int(os.getenv("ADMIN_ID") or 0)
 PRICE_RUB = int(os.getenv("PRICE_RUB", "5000"))
-SEND_RECEIPT = os.getenv("SEND_RECEIPT") == "1"
 DB_PATH = os.path.join(os.path.dirname(__file__), "payments.db")
 
 DATES = {
@@ -110,10 +114,11 @@ TEXT_PAID = """\
 def db() -> sqlite3.Connection:
     con = sqlite3.connect(DB_PATH)
     con.execute(
-        """CREATE TABLE IF NOT EXISTS payments (
+        """CREATE TABLE IF NOT EXISTS orders (
+            inv_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER, username TEXT, full_name TEXT,
-            date_key TEXT, amount INTEGER, charge_id TEXT UNIQUE,
-            paid_at TEXT DEFAULT CURRENT_TIMESTAMP)"""
+            date_key TEXT, amount INTEGER, paid INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP, paid_at TEXT)"""
     )
     return con
 
@@ -121,9 +126,23 @@ def db() -> sqlite3.Connection:
 def paid_user(user_id: int) -> str | None:
     with db() as con:
         row = con.execute(
-            "SELECT date_key FROM payments WHERE user_id=?", (user_id,)
+            "SELECT date_key FROM orders WHERE user_id=? AND paid=1", (user_id,)
         ).fetchone()
     return row[0] if row else None
+
+
+def payment_url(inv_id: int) -> str:
+    sig = HASH(f"{ROBOKASSA_LOGIN}:{PRICE_RUB}:{inv_id}:{ROBOKASSA_PASS1}".encode()).hexdigest()
+    params = {
+        "MerchantLogin": ROBOKASSA_LOGIN,
+        "OutSum": PRICE_RUB,
+        "InvId": inv_id,
+        "Description": "Предоплата за практикум по Claude",
+        "SignatureValue": sig,
+    }
+    if ROBOKASSA_TEST:
+        params["IsTest"] = 1
+    return "https://auth.robokassa.ru/Merchant/Index.aspx?" + urlencode(params)
 
 
 def kb(*rows: list[tuple[str, str]]) -> InlineKeyboardMarkup:
@@ -176,7 +195,7 @@ async def choose_date(c: CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("pay:"))
-async def send_invoice(c: CallbackQuery, bot: Bot):
+async def send_payment_link(c: CallbackQuery):
     await c.answer()
     date_key = c.data.split(":", 1)[1]
     if date_key not in DATES:
@@ -184,74 +203,85 @@ async def send_invoice(c: CallbackQuery, bot: Bot):
     if paid_user(c.from_user.id):
         await c.message.answer("Вы уже оплатили участие. Нажмите /start, чтобы получить ссылку.")
         return
-
-    kwargs = {}
-    if SEND_RECEIPT:
-        kwargs = dict(
-            need_email=True,
-            send_email_to_provider=True,
-            provider_data=json.dumps(
-                {
-                    "receipt": {
-                        "items": [
-                            {
-                                "description": "Предоплата за практикум по Claude",
-                                "quantity": "1.00",
-                                "amount": {"value": f"{PRICE_RUB}.00", "currency": "RUB"},
-                                "vat_code": 1,
-                                "payment_mode": "full_prepayment",
-                                "payment_subject": "service",
-                            }
-                        ]
-                    }
-                }
-            ),
-        )
-    await bot.send_invoice(
-        chat_id=c.from_user.id,
-        title="Практикум по Claude",
-        description=f"Предоплата. {DATES[date_key]}",
-        payload=date_key,
-        provider_token=PROVIDER_TOKEN,
-        currency="RUB",
-        prices=[LabeledPrice(label="Предоплата", amount=PRICE_RUB * 100)],
-        **kwargs,
-    )
-
-
-@dp.pre_checkout_query()
-async def pre_checkout(q: PreCheckoutQuery):
-    await q.answer(ok=True)
-
-
-@dp.message(F.successful_payment)
-async def paid(m: Message, bot: Bot):
-    p = m.successful_payment
-    date_key = p.invoice_payload
-    u = m.from_user
+    u = c.from_user
     with db() as con:
-        con.execute(
-            "INSERT OR IGNORE INTO payments (user_id, username, full_name, date_key, amount, charge_id)"
-            " VALUES (?,?,?,?,?,?)",
-            (u.id, u.username, u.full_name, date_key, p.total_amount // 100,
-             p.telegram_payment_charge_id),
-        )
-    await m.answer(
-        TEXT_PAID.format(date=DATES[date_key], link=WHATSAPP_GROUP_LINK),
+        inv_id = con.execute(
+            "INSERT INTO orders (user_id, username, full_name, date_key, amount) VALUES (?,?,?,?,?)",
+            (u.id, u.username, u.full_name, date_key, PRICE_RUB),
+        ).lastrowid
+    await c.message.answer(
+        f"Дата: <b>{DATES[date_key]}</b>\nСумма: <b>{PRICE_RUB} ₽</b>\n\n"
+        "Нажмите кнопку, оплатите на странице Робокассы — и ссылка на WhatsApp-группу "
+        "придёт сюда автоматически в течение минуты.",
         parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text=f"💳 Оплатить {PRICE_RUB} ₽", url=payment_url(inv_id))]]
+        ),
     )
-    if ADMIN_ID:
+
+
+async def robokassa_result(request: web.Request) -> web.Response:
+    """ResultURL: Робокасса вызывает его после успешной оплаты."""
+    data = {**request.query, **(await request.post())}
+    out_sum, inv_id, sig = data.get("OutSum", ""), data.get("InvId", ""), data.get("SignatureValue", "")
+    expected = HASH(f"{out_sum}:{inv_id}:{ROBOKASSA_PASS2}".encode()).hexdigest()
+    if sig.lower() != expected.lower() or not inv_id.isdigit():
+        logging.warning("Robokassa: неверная подпись, InvId=%s", inv_id)
+        return web.Response(status=400, text="bad signature")
+    with db() as con:
+        row = con.execute(
+            "SELECT user_id, username, full_name, date_key, amount, paid FROM orders WHERE inv_id=?",
+            (int(inv_id),),
+        ).fetchone()
+        if not row:
+            return web.Response(status=404, text="no such order")
+        user_id, username, full_name, date_key, amount, already = row
+        if float(out_sum) < amount:
+            return web.Response(status=400, text="wrong amount")
+        if not already:
+            con.execute(
+                "UPDATE orders SET paid=1, paid_at=CURRENT_TIMESTAMP WHERE inv_id=?", (int(inv_id),)
+            )
+    if not already:
+        bot: Bot = request.app["bot"]
         await bot.send_message(
-            ADMIN_ID,
-            f"💰 Оплата {p.total_amount // 100} ₽\n"
-            f"{u.full_name} (@{u.username or '—'}, id {u.id})\n"
-            f"Дата: {DATES[date_key]}",
+            user_id,
+            TEXT_PAID.format(date=DATES[date_key], link=WHATSAPP_GROUP_LINK),
+            parse_mode="HTML",
         )
+        if ADMIN_ID:
+            await bot.send_message(
+                ADMIN_ID,
+                f"💰 Оплата {out_sum} ₽\n{full_name} (@{username or '—'}, id {user_id})\n"
+                f"Дата: {DATES[date_key]}",
+            )
+    return web.Response(text=f"OK{inv_id}")  # Робокасса ждёт именно такой ответ
+
+
+async def robokassa_return(request: web.Request) -> web.Response:
+    """SuccessURL/FailURL: страница, куда человек попадает после оплаты."""
+    return web.Response(
+        text="Спасибо! Вернитесь в Telegram: ссылка на WhatsApp-группу придёт в чат с ботом.",
+        content_type="text/plain",
+        charset="utf-8",
+    )
 
 
 async def main():
     logging.basicConfig(level=logging.INFO)
-    await dp.start_polling(Bot(BOT_TOKEN))
+    bot = Bot(BOT_TOKEN)
+    db().close()
+    app = web.Application()
+    app["bot"] = bot
+    app.add_routes([
+        web.route("*", "/robokassa/result", robokassa_result),
+        web.get("/robokassa/success", robokassa_return),
+        web.get("/robokassa/fail", robokassa_return),
+    ])
+    runner = web.AppRunner(app)
+    await runner.setup()
+    await web.TCPSite(runner, "0.0.0.0", WEB_PORT).start()
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
