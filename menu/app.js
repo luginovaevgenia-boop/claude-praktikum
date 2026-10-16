@@ -1,0 +1,266 @@
+import { createStore, generateFamilyCode, defaultState } from './storage.js';
+import { DISHES, AISLES, UNITS } from './dishes.js';
+import { MEALS, generateWeek, pickReplacement, buildShoppingList, normalizeName } from './logic.js';
+import { FIREBASE_CONFIG } from './firebase-config.js';
+
+const CODE_KEY = 'menu:familyCode';
+const DAYS = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const MEAL_LABEL = { breakfast: 'Завтрак', lunch: 'Обед', dinner: 'Ужин' };
+const TITLES = { week: 'Меню на неделю', shopping: 'Что купить', today: 'Сегодня', pantry: 'Что есть дома', settings: 'Настройки' };
+
+const root = document.getElementById('screen');
+const nav = document.getElementById('nav');
+let store = null;
+let state = defaultState();
+let screen = 'week';
+
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else if (v === true) el.setAttribute(k, '');
+    else if (v !== false && v != null) el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+
+const allDishes = () => [...DISHES, ...state.customDishes];
+const todayIndex = () => (new Date().getDay() + 6) % 7;
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const save = (patch) => store.update(patch);
+
+function formatQty(qty, unit) {
+  if (unit === 'г') return qty >= 1000 ? `${+(qty / 1000).toFixed(1)} кг` : `${Math.ceil(qty)} г`;
+  if (unit === 'мл') return qty >= 1000 ? `${+(qty / 1000).toFixed(1)} л` : `${Math.ceil(qty)} мл`;
+  return `${Math.ceil(qty)} шт`;
+}
+
+// ---------- Вход ----------
+function showLogin(message) {
+  nav.hidden = true;
+  document.getElementById('title').textContent = 'Меню на неделю';
+  const input = h('input', { type: 'text', placeholder: 'Код семьи', autocapitalize: 'none', autocomplete: 'off' });
+  const note = h('p', { class: message ? 'error' : 'hint' }, message || 'Введите код семьи, чтобы увидеть общее меню, или создайте новую семью.');
+  root.replaceChildren(h('div', { class: 'card' },
+    note, input,
+    h('button', { class: 'primary big', onclick: () => login(input.value) }, 'Войти'),
+    h('button', { class: 'big', onclick: () => {
+      input.value = generateFamilyCode();
+      note.className = 'hint';
+      note.textContent = 'Новый код создан. Запишите его: по нему остальные члены семьи войдут на своих телефонах. Затем нажмите «Войти».';
+    } }, 'Создать новую семью')));
+}
+
+async function login(code) {
+  try {
+    store = await createStore(FIREBASE_CONFIG, code);
+  } catch (e) {
+    return showLogin(e.message);
+  }
+  localStorage.setItem(CODE_KEY, code.trim().toLowerCase());
+  nav.hidden = false;
+  store.subscribe((s) => { state = s; render(); });
+}
+
+function leave() {
+  if (!confirm('Выйти из семьи на этом устройстве? Данные в облаке сохранятся.')) return;
+  localStorage.removeItem(CODE_KEY);
+  location.reload();
+}
+
+// ---------- Каркас ----------
+function render() {
+  document.getElementById('title').textContent = TITLES[screen];
+  nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.screen === screen));
+  const view = h('div');
+  ({ week: renderWeek, shopping: renderShopping, today: renderToday, pantry: renderPantry, settings: renderSettings })[screen](view);
+  root.replaceChildren(view);
+}
+
+function showScreen(name) { screen = name; render(); window.scrollTo(0, 0); }
+nav.addEventListener('click', (e) => { if (e.target.dataset.screen) showScreen(e.target.dataset.screen); });
+
+function sheet(title, ...content) {
+  const overlay = h('div', { class: 'overlay', onclick: (e) => { if (e.target === overlay) overlay.remove(); } },
+    h('div', { class: 'sheet' }, h('h2', {}, title), content));
+  document.body.append(overlay);
+  return () => overlay.remove();
+}
+
+// ---------- Неделя ----------
+function setSlot(day, meal, slot) {
+  const menu = clone(state.menu);
+  menu[day][meal] = slot;
+  return save({ menu });
+}
+
+function generate() {
+  const hasMenu = state.menu.some((d) => MEALS.some((m) => d[m].dishId));
+  if (hasMenu && !confirm('Заменить текущее меню новым?')) return;
+  save({ menu: generateWeek(allDishes(), state.pantry, state.menu), bought: [] });
+}
+
+function toggleOff(day, meal) {
+  const off = !state.menu[day][meal].off;
+  const dishId = off ? null : pickReplacement(allDishes(), state.menu, day, meal, state.pantry);
+  setSlot(day, meal, { off, dishId });
+}
+
+function openReplace(day, meal) {
+  const search = h('input', { type: 'search', placeholder: 'Найти блюдо' });
+  const list = h('div', { class: 'list' });
+  let close;
+  const pick = (id) => { setSlot(day, meal, { off: false, dishId: id }); close(); };
+  const fill = () => {
+    const q = normalizeName(search.value);
+    list.replaceChildren(...allDishes()
+      .filter((d) => d.meals.includes(meal) && normalizeName(d.name).includes(q))
+      .map((d) => h('button', { onclick: () => pick(d.id) }, d.name)));
+  };
+  search.addEventListener('input', fill);
+  close = sheet(`${MEAL_LABEL[meal]}, ${DAYS[day].toLowerCase()}`,
+    h('button', { class: 'primary big', onclick: () => pick(pickReplacement(allDishes(), state.menu, day, meal, state.pantry)) }, 'Другое случайное блюдо'),
+    search, list);
+  fill();
+}
+
+function renderWeek(el) {
+  const byId = new Map(allDishes().map((d) => [d.id, d]));
+  el.append(h('button', { class: 'primary big', onclick: generate }, 'Составить неделю'));
+  state.menu.forEach((day, di) => {
+    el.append(h('section', { class: 'card' },
+      h('h3', {}, DAYS[di] + (di === todayIndex() ? ' · сегодня' : '')),
+      MEALS.map((meal) => {
+        const slot = day[meal];
+        const dish = byId.get(slot.dishId);
+        return h('div', { class: 'slot' + (slot.off ? ' off' : '') },
+          h('span', { class: 'meal' }, MEAL_LABEL[meal]),
+          slot.off
+            ? h('span', { class: 'dish muted' }, 'не готовим')
+            : h('button', { class: 'dish', onclick: () => openReplace(di, meal) }, dish ? dish.name : '— выбрать'),
+          h('button', { class: 'toggle', onclick: () => toggleOff(di, meal) }, slot.off ? 'вернуть' : 'не готовим'));
+      })));
+  });
+}
+
+// ---------- Сегодня ----------
+function renderToday(el) {
+  const byId = new Map(allDishes().map((d) => [d.id, d]));
+  const day = state.menu[todayIndex()];
+  el.append(h('p', { class: 'hint' }, DAYS[todayIndex()]));
+  if (!state.menu.some((d) => MEALS.some((m) => d[m].dishId))) {
+    el.append(h('p', {}, 'Меню ещё не составлено. Откройте «Неделя» и нажмите «Составить неделю».'));
+    return;
+  }
+  el.append(h('div', { class: 'today' }, MEALS.map((meal) => {
+    const slot = day[meal];
+    const dish = byId.get(slot.dishId);
+    return h('div', { class: 'item' }, h('small', {}, MEAL_LABEL[meal]), slot.off ? 'не готовим' : (dish ? dish.name : '—'));
+  })));
+}
+
+// ---------- Дома ----------
+function renderPantry(el) {
+  const names = [...new Set(allDishes().flatMap((d) => d.items.map((i) => normalizeName(i.name))))]
+    .sort((a, b) => a.localeCompare(b, 'ru'));
+  const search = h('input', { type: 'search', placeholder: 'Найти продукт' });
+  const chips = h('div', { class: 'chips' });
+  const fill = () => {
+    const q = normalizeName(search.value);
+    chips.replaceChildren(...names.filter((n) => n.includes(q)).map((n) => {
+      const on = state.pantry.map(normalizeName).includes(n);
+      return h('button', { class: 'chip' + (on ? ' on' : ''), onclick: () => {
+        save({ pantry: on ? state.pantry.filter((p) => normalizeName(p) !== n) : [...state.pantry, n] });
+      } }, n);
+    }));
+  };
+  search.addEventListener('input', fill);
+  el.append(
+    h('p', { class: 'hint' }, 'Отметьте, что уже есть. Такие продукты не попадут в список покупок и будут чаще встречаться в меню.'),
+    h('div', { class: 'row-flex' }, h('span', {}, `Отмечено: ${state.pantry.length}`),
+      h('button', { class: 'link', onclick: () => save({ pantry: [] }) }, 'Очистить')),
+    search, chips);
+  fill();
+}
+
+// ---------- Покупки ----------
+function renderShopping(el) {
+  const groups = buildShoppingList(allDishes(), state.menu, state.pantry, state.people);
+  if (!groups.length) {
+    el.append(h('p', {}, 'Список пуст: составьте меню на вкладке «Неделя».'));
+    return;
+  }
+  el.append(h('p', { class: 'hint' }, `На ${state.people} чел. Нажмите на продукт, чтобы вычеркнуть.`));
+  for (const g of groups) {
+    el.append(h('section', { class: 'card group' }, h('h3', {}, g.aisle),
+      g.items.map((it) => {
+        const done = state.bought.includes(it.key);
+        return h('button', { class: 'buy' + (done ? ' done' : ''), onclick: () => {
+          save({ bought: done ? state.bought.filter((k) => k !== it.key) : [...state.bought, it.key] });
+        } }, h('span', {}, it.name), h('span', {}, formatQty(it.qty, it.unit)));
+      })));
+  }
+  el.append(h('button', { class: 'link', onclick: () => save({ bought: [] }) }, 'Сбросить отметки'));
+}
+
+// ---------- Настройки ----------
+function openDishEditor() {
+  const name = h('input', { type: 'text', placeholder: 'Название блюда' });
+  const meals = MEALS.map((m) => h('input', { type: 'checkbox', value: m }));
+  const rows = h('div');
+  const error = h('p', { class: 'error' });
+  const addRow = () => rows.append(h('div', { class: 'ing' },
+    h('input', { type: 'text', placeholder: 'Продукт', 'data-f': 'name' }),
+    h('input', { type: 'number', min: '0', step: 'any', placeholder: 'Кол-во', 'data-f': 'qty' }),
+    h('select', { 'data-f': 'unit' }, UNITS.map((u) => h('option', {}, u))),
+    h('select', { class: 'aisle', 'data-f': 'aisle' }, AISLES.map((a) => h('option', {}, a)))));
+  addRow();
+  let close;
+  const submit = () => {
+    const items = [...rows.children].map((r) => {
+      const f = (k) => r.querySelector(`[data-f=${k}]`).value;
+      return { name: normalizeName(f('name')), qty: Number(f('qty')), unit: f('unit'), aisle: f('aisle') };
+    }).filter((i) => i.name);
+    const chosen = meals.filter((c) => c.checked).map((c) => c.value);
+    if (!name.value.trim()) return (error.textContent = 'Введите название блюда.');
+    if (!chosen.length) return (error.textContent = 'Выберите хотя бы один приём пищи.');
+    if (!items.length || items.some((i) => !(i.qty > 0))) return (error.textContent = 'Добавьте продукты и укажите количество на одного человека.');
+    save({ customDishes: [...state.customDishes, { id: `custom-${Date.now()}`, name: name.value.trim(), meals: chosen, items }] });
+    close();
+  };
+  close = sheet('Своё блюдо', name,
+    h('p', {}, MEALS.map((m, i) => h('label', { class: 'check' }, meals[i], MEAL_LABEL[m]))),
+    h('p', { class: 'hint' }, 'Продукты — количество на одного человека:'),
+    rows, h('button', { class: 'link', onclick: addRow }, '+ ещё продукт'), error,
+    h('button', { class: 'primary big', onclick: submit }, 'Сохранить блюдо'));
+}
+
+function renderSettings(el) {
+  const setPeople = (n) => save({ people: Math.min(12, Math.max(1, n)) });
+  const code = localStorage.getItem(CODE_KEY) || '';
+  el.append(
+    h('section', { class: 'card' }, h('h3', {}, 'Сколько человек в семье'),
+      h('div', { class: 'row-flex' },
+        h('button', { onclick: () => setPeople(state.people - 1), 'aria-label': 'Меньше' }, '−'),
+        h('strong', {}, state.people),
+        h('button', { onclick: () => setPeople(state.people + 1), 'aria-label': 'Больше' }, '+'))),
+    h('section', { class: 'card' }, h('h3', {}, 'Код семьи'),
+      h('div', { class: 'big-code' }, code),
+      h('p', { class: 'hint' }, store.mode === 'cloud'
+        ? 'Меню общее: введите этот код на других телефонах.'
+        : 'Облако не настроено: данные хранятся только на этом устройстве (см. README).'),
+      h('button', { class: 'danger', onclick: leave }, 'Выйти из семьи')),
+    h('section', { class: 'card' }, h('h3', {}, 'Свои блюда'),
+      state.customDishes.length ? state.customDishes.map((d) => h('div', { class: 'row-flex' },
+        h('span', { style: 'flex:1' }, d.name),
+        h('button', { class: 'danger', onclick: () => {
+          if (confirm(`Удалить «${d.name}»?`)) save({ customDishes: state.customDishes.filter((x) => x.id !== d.id) });
+        } }, 'Удалить'))) : h('p', { class: 'hint' }, 'Пока нет своих блюд.'),
+      h('button', { class: 'primary', onclick: openDishEditor }, 'Добавить блюдо')));
+}
+
+// ---------- Старт ----------
+const savedCode = localStorage.getItem(CODE_KEY);
+if (savedCode) login(savedCode); else showLogin();
