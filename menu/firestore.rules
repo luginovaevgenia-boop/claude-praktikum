@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Доступ только к документу своей семьи по его коду; перечислять семьи и удалять нельзя.
+    match /families/{code} {
+      allow get, create, update: if true;
+      allow list, delete: if false;
+    }
+  }
+}
