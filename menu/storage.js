@@ -11,7 +11,7 @@ export function generateFamilyCode() {
 }
 
 export function defaultState() {
-  return { people: 4, pantry: [], menu: emptyMenu(), bought: [], customDishes: [] };
+  return { people: 4, pantry: [], menu: emptyMenu(), bought: [], customDishes: [], picks: {} };
 }
 
 function normalizeCode(code) {

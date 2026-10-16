@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MEALS, AISLES, emptyMenu, generateWeek, pickReplacement, buildShoppingList,
+  MEALS, AISLES, emptyMenu, generateWeek, pickReplacement, buildShoppingList, frequentDishes, scaleItems,
 } from '../logic.js';
 import { DISHES as REAL_DISHES } from '../dishes.js';
 
@@ -156,4 +156,22 @@ test('generateWeek never puts the same dish on lunch and dinner of the same day'
     const m = generateWeek(REAL_DISHES, [], emptyMenu(), seeded(i + 2000));
     for (const d of m) assert.notEqual(d.lunch.dishId, d.dinner.dishId);
   }
+});
+
+test('frequentDishes returns dishes of the meal picked at least twice, most picked first', () => {
+  const picks = { b1: 2, b2: 5, b3: 1, l1: 9, gone: 4 };
+  assert.deepEqual(frequentDishes(DISHES, picks, 'breakfast').map((d) => d.id), ['b2', 'b1']);
+});
+
+test('frequentDishes breaks ties by name and ignores missing or empty picks', () => {
+  assert.deepEqual(frequentDishes(DISHES, { b1: 2, b3: 2 }, 'breakfast').map((d) => d.id), ['b3', 'b1']);
+  assert.deepEqual(frequentDishes(DISHES, undefined, 'breakfast'), []);
+  assert.deepEqual(frequentDishes(DISHES, {}, 'dinner'), []);
+});
+
+test('scaleItems multiplies quantities by people and treats invalid people as 1', () => {
+  const dish = DISHES.find((d) => d.id === 'b1');
+  assert.equal(scaleItems(dish, 3).find((i) => i.name === 'овсянка').qty, 150);
+  assert.equal(scaleItems(dish, 0).find((i) => i.name === 'овсянка').qty, 50);
+  assert.equal(dish.items[0].qty, 50); // исходное блюдо не меняется
 });

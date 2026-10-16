@@ -18,6 +18,10 @@ test('generateFamilyCode returns 12 chars from the alphabet and differs between 
   assert.notEqual(a, b);
 });
 
+test('defaultState starts with no picks', () => {
+  assert.deepEqual(defaultState().picks, {});
+});
+
 test('local store returns defaultState for a new code', async () => {
   const store = await createStore(null, 'abcdef123456', fakeBackend());
   assert.deepEqual(store.get(), defaultState());

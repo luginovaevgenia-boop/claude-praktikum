@@ -102,3 +102,15 @@ export function buildShoppingList(dishes, menu, pantry, people) {
     .sort((a, b) => rank(a) - rank(b))
     .map((aisle) => ({ aisle, items: groups.get(aisle).sort((a, b) => a.name.localeCompare(b.name, 'ru')) }));
 }
+
+export function frequentDishes(dishes, picks, meal) {
+  const counts = picks || {};
+  return dishes
+    .filter((d) => d.meals.includes(meal) && (counts[d.id] || 0) >= 2)
+    .sort((a, b) => counts[b.id] - counts[a.id] || a.name.localeCompare(b.name, 'ru'));
+}
+
+export function scaleItems(dish, people) {
+  const n = Number.isFinite(people) && people >= 1 ? people : 1;
+  return dish.items.map((i) => ({ ...i, qty: i.qty * n }));
+}
