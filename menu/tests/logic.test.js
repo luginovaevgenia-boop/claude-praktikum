@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MEALS, AISLES, emptyMenu, generateWeek, pickReplacement, buildShoppingList,
 } from '../logic.js';
+import { DISHES as REAL_DISHES } from '../dishes.js';
 
 const item = (name, qty, unit = 'г', aisle = 'Бакалея') => ({ name, qty, unit, aisle });
 const DISHES = [
@@ -64,7 +65,7 @@ test('generateWeek prefers dishes using pantry products', () => {
     let n = 0;
     for (let i = 0; i < 200; i++) {
       const m = generateWeek(DISHES, pantry, emptyMenu(), seeded(i + 500));
-      n += m.filter((day) => day.breakfast.dishId === 'b3').length;
+      n += m[0].breakfast.dishId === 'b3' ? 1 : 0;
     }
     return n;
   };
@@ -138,4 +139,21 @@ test('buildShoppingList groups by aisle in the fixed aisle order', () => {
   const aisles = buildShoppingList(DISHES, menu, [], 1).map((g) => g.aisle);
   assert.deepEqual(aisles, AISLES.filter((a) => aisles.includes(a)));
   assert.deepEqual(aisles, ['Мясо и рыба', 'Овощи и фрукты', 'Крупы и макароны', 'Молочное и яйца']);
+});
+
+test('generateWeek does not repeat a dish within a week for the same meal when the pool is large enough', () => {
+  for (let i = 0; i < 300; i++) {
+    const m = generateWeek(REAL_DISHES, [], emptyMenu(), seeded(i + 900));
+    for (const meal of MEALS) {
+      const ids = m.map((d) => d[meal].dishId);
+      assert.equal(new Set(ids).size, 7, `${meal}: ${ids.join(',')}`);
+    }
+  }
+});
+
+test('generateWeek never puts the same dish on lunch and dinner of the same day', () => {
+  for (let i = 0; i < 500; i++) {
+    const m = generateWeek(REAL_DISHES, [], emptyMenu(), seeded(i + 2000));
+    for (const d of m) assert.notEqual(d.lunch.dishId, d.dinner.dishId);
+  }
 });

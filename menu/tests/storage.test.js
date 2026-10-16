@@ -66,3 +66,72 @@ test('a corrupted backend value falls back to defaultState', async () => {
   const store = await createStore(null, 'abcdef123456', backend);
   assert.deepEqual(store.get(), defaultState());
 });
+
+test('mustExist rejects when no family was saved under that code', async () => {
+  await assert.rejects(() => createStore(null, 'abcdef123456', fakeBackend(), { mustExist: true }), /не найдена/);
+});
+
+test('a created family can be entered later with mustExist', async () => {
+  const backend = fakeBackend();
+  await createStore(null, 'abcdef123456', backend);
+  const again = await createStore(null, 'abcdef123456', backend, { mustExist: true });
+  assert.equal(again.get().people, 4);
+});
+
+// ---- облако с поддельным SDK ----
+function fakeSdk({ exists = true, data = {}, failFirst = false, setDocError = null } = {}) {
+  const calls = { app: 0, fs: 0, unsub: 0, setDoc: [] };
+  let listener = null;
+  const sdk = {
+    initializeApp: () => { calls.app++; return {}; },
+    persistentLocalCache: () => ({}),
+    initializeFirestore: () => { calls.fs++; return {}; },
+    doc: () => ({}),
+    onSnapshot: (_ref, next, error) => {
+      listener = { next, error };
+      if (failFirst) error(new Error('permission-denied'));
+      else next({ exists: () => exists, data: () => data });
+      return () => { calls.unsub++; };
+    },
+    setDoc: async (_ref, value) => { calls.setDoc.push(value); if (setDocError) throw setDocError; },
+  };
+  return { sdk, calls, emit: () => listener };
+}
+
+test('cloud: after a failed connection the retry reuses the initialized Firestore and the failed listener is removed', async () => {
+  const cfg = { id: 'retry' };
+  const bad = fakeSdk({ failFirst: true });
+  await assert.rejects(() => createStore(cfg, 'abcdef123456', null, { loadSdk: async () => bad.sdk }), /Нет доступа/);
+  assert.equal(bad.calls.unsub, 1);
+  const good = fakeSdk();
+  const store = await createStore(cfg, 'abcdef123456', null, { loadSdk: async () => good.sdk });
+  assert.equal(store.mode, 'cloud');
+  assert.equal(bad.calls.fs + good.calls.fs, 1);
+});
+
+test('cloud: mustExist rejects for a missing family and removes the listener', async () => {
+  const f = fakeSdk({ exists: false });
+  await assert.rejects(() => createStore({ id: 'must' }, 'abcdef123456', null, { mustExist: true, loadSdk: async () => f.sdk }), /не найдена/);
+  assert.equal(f.calls.unsub, 1);
+  assert.equal(f.calls.setDoc.length, 0);
+});
+
+test('cloud: a new family document is created with the default state', async () => {
+  const f = fakeSdk({ exists: false });
+  await createStore({ id: 'create' }, 'abcdef123456', null, { loadSdk: async () => f.sdk });
+  assert.deepEqual(f.calls.setDoc, [defaultState()]);
+});
+
+test('cloud: update rejects when the write fails', async () => {
+  const f = fakeSdk({ setDocError: new Error('permission-denied') });
+  const store = await createStore({ id: 'write' }, 'abcdef123456', null, { loadSdk: async () => f.sdk });
+  await assert.rejects(() => store.update({ people: 7 }), /permission-denied/);
+});
+
+test('cloud: errors after the first snapshot go to onError', async () => {
+  const f = fakeSdk();
+  const errors = [];
+  await createStore({ id: 'late' }, 'abcdef123456', null, { loadSdk: async () => f.sdk, onError: (e) => errors.push(e.message) });
+  f.emit().error(new Error('boom'));
+  assert.equal(errors.length, 1);
+});

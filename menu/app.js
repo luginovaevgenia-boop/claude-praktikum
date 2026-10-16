@@ -29,7 +29,14 @@ function h(tag, attrs = {}, ...kids) {
 const allDishes = () => [...DISHES, ...state.customDishes];
 const todayIndex = () => (new Date().getDay() + 6) % 7;
 const clone = (x) => JSON.parse(JSON.stringify(x));
-const save = (patch) => store.update(patch);
+const SAVE_ERROR = 'Не удалось сохранить изменения в облаке. Проверьте интернет и настройки Firebase.';
+const save = (patch) => store.update(patch).catch(() => toast(SAVE_ERROR));
+
+function toast(text) {
+  const el = h('div', { class: 'toast', role: 'alert' }, text);
+  document.body.append(el);
+  setTimeout(() => el.remove(), 5000);
+}
 
 function formatQty(qty, unit) {
   if (unit === 'г') return qty >= 1000 ? `${+(qty / 1000).toFixed(1)} кг` : `${Math.ceil(qty)} г`;
@@ -42,20 +49,22 @@ function showLogin(message) {
   nav.hidden = true;
   document.getElementById('title').textContent = 'Меню на неделю';
   const input = h('input', { type: 'text', placeholder: 'Код семьи', autocapitalize: 'none', autocomplete: 'off' });
+  let createdCode = null;
   const note = h('p', { class: message ? 'error' : 'hint' }, message || 'Введите код семьи, чтобы увидеть общее меню, или создайте новую семью.');
   root.replaceChildren(h('div', { class: 'card' },
     note, input,
-    h('button', { class: 'primary big', onclick: () => login(input.value) }, 'Войти'),
+    h('button', { class: 'primary big', onclick: () => login(input.value, { create: createdCode !== null && input.value.trim().toLowerCase() === createdCode }) }, 'Войти'),
     h('button', { class: 'big', onclick: () => {
-      input.value = generateFamilyCode();
+      createdCode = generateFamilyCode();
+      input.value = createdCode;
       note.className = 'hint';
       note.textContent = 'Новый код создан. Запишите его: по нему остальные члены семьи войдут на своих телефонах. Затем нажмите «Войти».';
     } }, 'Создать новую семью')));
 }
 
-async function login(code) {
+async function login(code, { create = false } = {}) {
   try {
-    store = await createStore(FIREBASE_CONFIG, code);
+    store = await createStore(FIREBASE_CONFIG, code, undefined, { mustExist: !create, onError: () => toast(SAVE_ERROR) });
   } catch (e) {
     return showLogin(e.message);
   }
@@ -206,17 +215,29 @@ function renderShopping(el) {
 }
 
 // ---------- Настройки ----------
-function openDishEditor() {
+function openDishEditor(existing) {
   const name = h('input', { type: 'text', placeholder: 'Название блюда' });
   const meals = MEALS.map((m) => h('input', { type: 'checkbox', value: m }));
   const rows = h('div');
   const error = h('p', { class: 'error' });
-  const addRow = () => rows.append(h('div', { class: 'ing' },
-    h('input', { type: 'text', placeholder: 'Продукт', 'data-f': 'name' }),
-    h('input', { type: 'number', min: '0', step: 'any', placeholder: 'Кол-во', 'data-f': 'qty' }),
-    h('select', { 'data-f': 'unit' }, UNITS.map((u) => h('option', {}, u))),
-    h('select', { class: 'aisle', 'data-f': 'aisle' }, AISLES.map((a) => h('option', {}, a)))));
-  addRow();
+  const addRow = (item) => {
+    const row = h('div', { class: 'ing' },
+      h('input', { type: 'text', placeholder: 'Продукт', 'data-f': 'name' }),
+      h('input', { type: 'number', min: '0', step: 'any', placeholder: 'Кол-во', 'data-f': 'qty' }),
+      h('select', { 'data-f': 'unit' }, UNITS.map((u) => h('option', {}, u))),
+      h('select', { class: 'aisle', 'data-f': 'aisle' }, AISLES.map((a) => h('option', {}, a))));
+    if (item && item.name) {
+      for (const f of ['name', 'qty', 'unit', 'aisle']) row.querySelector(`[data-f=${f}]`).value = item[f];
+    }
+    rows.append(row);
+  };
+  if (existing) {
+    name.value = existing.name;
+    meals.forEach((c) => { c.checked = existing.meals.includes(c.value); });
+    existing.items.forEach(addRow);
+  } else {
+    addRow();
+  }
   let close;
   const submit = () => {
     const items = [...rows.children].map((r) => {
@@ -227,13 +248,14 @@ function openDishEditor() {
     if (!name.value.trim()) return (error.textContent = 'Введите название блюда.');
     if (!chosen.length) return (error.textContent = 'Выберите хотя бы один приём пищи.');
     if (!items.length || items.some((i) => !(i.qty > 0))) return (error.textContent = 'Добавьте продукты и укажите количество на одного человека.');
-    save({ customDishes: [...state.customDishes, { id: `custom-${Date.now()}`, name: name.value.trim(), meals: chosen, items }] });
+    const dish = { id: existing ? existing.id : `custom-${Date.now()}`, name: name.value.trim(), meals: chosen, items };
+    save({ customDishes: existing ? state.customDishes.map((d) => (d.id === dish.id ? dish : d)) : [...state.customDishes, dish] });
     close();
   };
-  close = sheet('Своё блюдо', name,
+  close = sheet(existing ? 'Изменить блюдо' : 'Своё блюдо', name,
     h('p', {}, MEALS.map((m, i) => h('label', { class: 'check' }, meals[i], MEAL_LABEL[m]))),
     h('p', { class: 'hint' }, 'Продукты — количество на одного человека:'),
-    rows, h('button', { class: 'link', onclick: addRow }, '+ ещё продукт'), error,
+    rows, h('button', { class: 'link', onclick: () => addRow() }, '+ ещё продукт'), error,
     h('button', { class: 'primary big', onclick: submit }, 'Сохранить блюдо'));
 }
 
@@ -255,12 +277,14 @@ function renderSettings(el) {
     h('section', { class: 'card' }, h('h3', {}, 'Свои блюда'),
       state.customDishes.length ? state.customDishes.map((d) => h('div', { class: 'row-flex' },
         h('span', { style: 'flex:1' }, d.name),
+        h('button', { onclick: () => openDishEditor(d) }, 'Изменить'),
         h('button', { class: 'danger', onclick: () => {
           if (confirm(`Удалить «${d.name}»?`)) save({ customDishes: state.customDishes.filter((x) => x.id !== d.id) });
         } }, 'Удалить'))) : h('p', { class: 'hint' }, 'Пока нет своих блюд.'),
-      h('button', { class: 'primary', onclick: openDishEditor }, 'Добавить блюдо')));
+      h('button', { class: 'primary', onclick: () => openDishEditor() }, 'Добавить блюдо')));
 }
 
 // ---------- Старт ----------
 const savedCode = localStorage.getItem(CODE_KEY);
-if (savedCode) login(savedCode); else showLogin();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if (savedCode) login(savedCode, { create: true }); else showLogin();

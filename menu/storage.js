@@ -2,6 +2,7 @@ import { emptyMenu } from './logic.js';
 
 const CODE_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 const FIREBASE_BASE = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const NOT_FOUND = 'Семья с таким кодом не найдена. Проверьте код и подключение к интернету.';
 
 export function generateFamilyCode() {
   const bytes = new Uint8Array(12);
@@ -31,13 +32,15 @@ function createEmitter(getState) {
   };
 }
 
-function createLocalStore(code, backend) {
+function createLocalStore(code, backend, mustExist) {
   const key = `menu:${code}`;
+  const raw = backend.getItem(key);
+  if (raw == null && mustExist) throw new Error(NOT_FOUND);
   let state = defaultState();
   try {
-    const raw = backend.getItem(key);
     if (raw) state = { ...defaultState(), ...JSON.parse(raw) };
   } catch { /* повреждённые данные — начинаем с чистого состояния */ }
+  if (raw == null) backend.setItem(key, JSON.stringify(state));
   const emitter = createEmitter(() => state);
   return {
     mode: 'local',
@@ -51,26 +54,58 @@ function createLocalStore(code, backend) {
   };
 }
 
-async function createCloudStore(config, code) {
-  const { initializeApp } = await import(`${FIREBASE_BASE}firebase-app.js`);
-  const fs = await import(`${FIREBASE_BASE}firebase-firestore.js`);
-  const db = fs.initializeFirestore(initializeApp(config), { localCache: fs.persistentLocalCache() });
-  const ref = fs.doc(db, 'families', code);
+async function defaultLoadSdk() {
+  const [app, firestore] = await Promise.all([
+    import(`${FIREBASE_BASE}firebase-app.js`),
+    import(`${FIREBASE_BASE}firebase-firestore.js`),
+  ]);
+  return { ...app, ...firestore };
+}
+
+// Firestore можно инициализировать только один раз на конфиг, поэтому при повторном входе берём ту же базу.
+const databases = new Map();
+async function getDatabase(config, loadSdk) {
+  const sdk = await loadSdk();
+  const key = JSON.stringify(config);
+  if (!databases.has(key)) {
+    databases.set(key, sdk.initializeFirestore(sdk.initializeApp(config), { localCache: sdk.persistentLocalCache() }));
+  }
+  return { sdk, db: databases.get(key) };
+}
+
+async function createCloudStore(config, code, { mustExist, loadSdk, onError }) {
+  const { sdk, db } = await getDatabase(config, loadSdk);
+  const ref = sdk.doc(db, 'families', code);
   let state = defaultState();
   const emitter = createEmitter(() => state);
+  let unsubscribe;
 
-  await new Promise((resolve, reject) => {
-    let first = true;
-    const timer = setTimeout(() => reject(new Error('Не удалось подключиться к облаку. Проверьте интернет.')), 8000);
-    fs.onSnapshot(ref, (snap) => {
-      state = { ...defaultState(), ...(snap.exists() ? snap.data() : {}) };
-      emitter.notify();
-      if (first) { first = false; clearTimeout(timer); resolve(); }
-    }, () => {
-      clearTimeout(timer);
-      if (first) reject(new Error('Нет доступа к облаку. Проверьте настройки Firebase.'));
+  try {
+    await new Promise((resolve, reject) => {
+      let first = true;
+      const timer = setTimeout(() => reject(new Error('Не удалось подключиться к облаку. Проверьте интернет.')), 8000);
+      unsubscribe = sdk.onSnapshot(ref, (snap) => {
+        if (first) {
+          clearTimeout(timer);
+          if (!snap.exists() && mustExist) return reject(new Error(NOT_FOUND));
+          if (!snap.exists()) sdk.setDoc(ref, defaultState()).catch((e) => onError?.(e));
+        }
+        state = { ...defaultState(), ...(snap.exists() ? snap.data() : {}) };
+        emitter.notify();
+        if (first) { first = false; resolve(); }
+      }, (e) => {
+        if (first) {
+          clearTimeout(timer);
+          reject(new Error('Нет доступа к облаку. Проверьте настройки Firebase.'));
+        } else {
+          onError?.(e);
+        }
+      });
     });
-  });
+  } catch (e) {
+    unsubscribe?.();
+    throw e;
+  }
 
   return {
     mode: 'cloud',
@@ -78,13 +113,16 @@ async function createCloudStore(config, code) {
     async update(patch) {
       state = { ...state, ...patch };
       emitter.notify();
-      await fs.setDoc(ref, patch, { merge: true });
+      await sdk.setDoc(ref, patch, { merge: true });
     },
     subscribe: emitter.subscribe,
   };
 }
 
-export async function createStore(config, familyCode, localBackend = globalThis.localStorage) {
+export async function createStore(config, familyCode, localBackend = globalThis.localStorage, options = {}) {
   const code = normalizeCode(familyCode);
-  return config ? createCloudStore(config, code) : createLocalStore(code, localBackend);
+  const { mustExist = false, loadSdk = defaultLoadSdk, onError } = options;
+  return config
+    ? createCloudStore(config, code, { mustExist, loadSdk, onError })
+    : createLocalStore(code, localBackend, mustExist);
 }

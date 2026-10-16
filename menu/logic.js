@@ -41,6 +41,7 @@ export function generateWeek(dishes, pantry, currentMenu, rng = Math.random) {
   const menu = emptyMenu();
   for (const meal of MEALS) {
     const pool = dishes.filter((d) => d.meals.includes(meal));
+    const usedThisWeek = new Set();
     let prevId = null;
     for (let day = 0; day < 7; day++) {
       if (currentMenu[day][meal].off) {
@@ -48,10 +49,18 @@ export function generateWeek(dishes, pantry, currentMenu, rng = Math.random) {
         prevId = null;
         continue;
       }
-      const fresh = pool.filter((d) => d.id !== prevId);
-      const dish = weightedPick(fresh.length ? fresh : pool, pantrySet, rng);
+      const sameDay = new Set(MEALS.map((m) => menu[day][m].dishId).filter(Boolean));
+      // от строгого к мягкому: без повторов за неделю, потом только без соседних дней, потом любое
+      const tiers = [
+        pool.filter((d) => !usedThisWeek.has(d.id) && d.id !== prevId && !sameDay.has(d.id)),
+        pool.filter((d) => d.id !== prevId && !sameDay.has(d.id)),
+        pool.filter((d) => d.id !== prevId),
+        pool,
+      ];
+      const dish = weightedPick(tiers.find((t) => t.length) || [], pantrySet, rng);
       menu[day][meal] = { off: false, dishId: dish ? dish.id : null };
       prevId = dish ? dish.id : null;
+      if (dish) usedThisWeek.add(dish.id);
     }
   }
   return menu;
