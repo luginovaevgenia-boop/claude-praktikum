@@ -1,6 +1,7 @@
 import { createStore, generateFamilyCode, defaultState } from './storage.js';
 import { DISHES, AISLES, UNITS } from './dishes.js';
-import { MEALS, generateWeek, pickReplacement, buildShoppingList, normalizeName } from './logic.js';
+import { MEALS, generateWeek, pickReplacement, buildShoppingList, normalizeName, frequentDishes, scaleItems } from './logic.js';
+import { RECIPES } from './recipes.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 
 const CODE_KEY = 'menu:familyCode';
@@ -117,20 +118,49 @@ function toggleOff(day, meal) {
   setSlot(day, meal, { off, dishId });
 }
 
+function openRecipe(dish) {
+  const recipe = RECIPES[dish.id];
+  let how;
+  if (recipe) how = h('ol', { class: 'steps' }, recipe.steps.map((step) => h('li', {}, step)));
+  else if (dish.recipe) how = h('p', { class: 'own-recipe' }, dish.recipe);
+  else how = h('p', { class: 'hint' }, 'Рецепт не записан. Его можно добавить: «Ещё» → «Изменить».');
+  sheet(dish.name,
+    h('p', { class: 'hint' }, `${recipe ? `${recipe.time} · ` : ''}продукты на ${state.people} чел.`),
+    h('ul', { class: 'ingredients' }, scaleItems(dish, state.people).map((i) =>
+      h('li', {}, h('span', {}, i.name), h('span', {}, formatQty(i.qty, i.unit))))),
+    h('h3', {}, 'Как готовить'),
+    how);
+}
+
 function openReplace(day, meal) {
   const search = h('input', { type: 'search', placeholder: 'Найти блюдо' });
   const list = h('div', { class: 'list' });
+  const current = allDishes().find((d) => d.id === state.menu[day][meal].dishId);
   let close;
-  const pick = (id) => { setSlot(day, meal, { off: false, dishId: id }); close(); };
+  // выбор вручную запоминается: блюда, выбранные два раза и больше, показываются первыми
+  const pick = (id, counted) => {
+    const menu = clone(state.menu);
+    menu[day][meal] = { off: false, dishId: id };
+    const picks = state.picks || {};
+    save(counted ? { menu, picks: { ...picks, [id]: (picks[id] || 0) + 1 } } : { menu });
+    close();
+  };
   const fill = () => {
     const q = normalizeName(search.value);
-    list.replaceChildren(...allDishes()
-      .filter((d) => d.meals.includes(meal) && normalizeName(d.name).includes(q))
-      .map((d) => h('button', { onclick: () => pick(d.id) }, d.name)));
+    const match = (d) => normalizeName(d.name).includes(q);
+    const frequent = frequentDishes(allDishes(), state.picks, meal).filter(match);
+    const frequentIds = new Set(frequent.map((d) => d.id));
+    const rest = allDishes().filter((d) => d.meals.includes(meal) && match(d) && !frequentIds.has(d.id));
+    const btn = (d) => h('button', { onclick: () => pick(d.id, true) }, d.name);
+    list.replaceChildren(
+      ...(frequent.length ? [h('h3', { class: 'sub' }, 'Часто выбираете'), h('div', { class: 'frequent' }, frequent.map(btn))] : []),
+      ...(frequent.length && rest.length ? [h('h3', { class: 'sub' }, 'Все блюда')] : []),
+      ...rest.map(btn));
   };
   search.addEventListener('input', fill);
   close = sheet(`${MEAL_LABEL[meal]}, ${DAYS[day].toLowerCase()}`,
-    h('button', { class: 'primary big', onclick: () => pick(pickReplacement(allDishes(), state.menu, day, meal, state.pantry)) }, 'Другое случайное блюдо'),
+    current && h('button', { class: 'link', onclick: () => { close(); openRecipe(current); } }, 'Рецепт'),
+    h('button', { class: 'primary big', onclick: () => pick(pickReplacement(allDishes(), state.menu, day, meal, state.pantry), false) }, 'Другое случайное блюдо'),
     search, list);
   fill();
 }
@@ -166,7 +196,10 @@ function renderToday(el) {
   el.append(h('div', { class: 'today' }, MEALS.map((meal) => {
     const slot = day[meal];
     const dish = byId.get(slot.dishId);
-    return h('div', { class: 'item' }, h('small', {}, MEAL_LABEL[meal]), slot.off ? 'не готовим' : (dish ? dish.name : '—'));
+    return h('div', { class: 'item' }, h('small', {}, MEAL_LABEL[meal]),
+      h('div', { class: 'row-flex' },
+        h('span', { style: 'flex:1' }, slot.off ? 'не готовим' : (dish ? dish.name : '—')),
+        !slot.off && dish && h('button', { class: 'link', onclick: () => openRecipe(dish) }, 'Рецепт')));
   })));
 }
 
@@ -218,6 +251,7 @@ function renderShopping(el) {
 function openDishEditor(existing) {
   const name = h('input', { type: 'text', placeholder: 'Название блюда' });
   const meals = MEALS.map((m) => h('input', { type: 'checkbox', value: m }));
+  const recipe = h('textarea', { rows: '4', placeholder: 'Как готовить (необязательно)' });
   const rows = h('div');
   const error = h('p', { class: 'error' });
   const addRow = (item) => {
@@ -233,6 +267,7 @@ function openDishEditor(existing) {
   };
   if (existing) {
     name.value = existing.name;
+    recipe.value = existing.recipe || '';
     meals.forEach((c) => { c.checked = existing.meals.includes(c.value); });
     existing.items.forEach(addRow);
   } else {
@@ -249,13 +284,14 @@ function openDishEditor(existing) {
     if (!chosen.length) return (error.textContent = 'Выберите хотя бы один приём пищи.');
     if (!items.length || items.some((i) => !(i.qty > 0))) return (error.textContent = 'Добавьте продукты и укажите количество на одного человека.');
     const dish = { id: existing ? existing.id : `custom-${Date.now()}`, name: name.value.trim(), meals: chosen, items };
+    if (recipe.value.trim()) dish.recipe = recipe.value.trim();
     save({ customDishes: existing ? state.customDishes.map((d) => (d.id === dish.id ? dish : d)) : [...state.customDishes, dish] });
     close();
   };
   close = sheet(existing ? 'Изменить блюдо' : 'Своё блюдо', name,
     h('p', {}, MEALS.map((m, i) => h('label', { class: 'check' }, meals[i], MEAL_LABEL[m]))),
     h('p', { class: 'hint' }, 'Продукты — количество на одного человека:'),
-    rows, h('button', { class: 'link', onclick: () => addRow() }, '+ ещё продукт'), error,
+    rows, h('button', { class: 'link', onclick: () => addRow() }, '+ ещё продукт'), recipe, error,
     h('button', { class: 'primary big', onclick: submit }, 'Сохранить блюдо'));
 }
 
