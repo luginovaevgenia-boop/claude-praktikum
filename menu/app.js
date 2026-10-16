@@ -168,8 +168,9 @@ function openReplace(day, meal) {
 function renderWeek(el) {
   const byId = new Map(allDishes().map((d) => [d.id, d]));
   el.append(h('button', { class: 'primary big', onclick: generate }, 'Составить неделю'));
+  el.append(h('p', { class: 'hint' }, '✕ — в этот приём не готовим (его не будет в списке покупок).'));
   state.menu.forEach((day, di) => {
-    el.append(h('section', { class: 'card' },
+    el.append(h('section', { class: 'card day' },
       h('h3', {}, DAYS[di] + (di === todayIndex() ? ' · сегодня' : '')),
       MEALS.map((meal) => {
         const slot = day[meal];
@@ -179,7 +180,7 @@ function renderWeek(el) {
           slot.off
             ? h('span', { class: 'dish muted' }, 'не готовим')
             : h('button', { class: 'dish', onclick: () => openReplace(di, meal) }, dish ? dish.name : '— выбрать'),
-          h('button', { class: 'toggle', onclick: () => toggleOff(di, meal) }, slot.off ? 'вернуть' : 'не готовим'));
+          h('button', { class: 'toggle', 'aria-label': slot.off ? 'Вернуть приём пищи' : 'Не готовим', title: slot.off ? 'Вернуть' : 'Не готовим', onclick: () => toggleOff(di, meal) }, slot.off ? 'вернуть' : '✕'));
       })));
   });
 }
