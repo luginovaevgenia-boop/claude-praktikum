@@ -58,10 +58,8 @@
   .screen.on { display: block; }
   @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
-  /* Кольцо Всевластия на фоне.
-     --turn поворачивает кольцо с каждым вопросом, --heat разжигает его свечение по мере прохождения. */
+  /* Кольцо Всевластия на фоне: просто висит и покачивается. */
   .stage {
-    --turn: 0deg; --heat: .25;
     position: fixed; inset: 0; z-index: -1; pointer-events: none;
     overflow: hidden;
     opacity: .9; transition: opacity 1s ease;
@@ -73,32 +71,21 @@
     width: min(112vw, 760px);
     animation: float 9s ease-in-out infinite;
   }
-  .stage .turn { position: relative; transform: rotate(var(--turn)); transition: transform 1.4s cubic-bezier(.2, .8, .2, 1); }
   .stage .ring-img {
     position: relative; display: block; width: 100%; height: auto;
-    filter: brightness(calc(.7 + var(--heat) * .4)) drop-shadow(0 0 calc(var(--heat) * 36px) rgba(255, 120, 40, .75));
-    transition: filter .8s ease;
+    filter: brightness(.9) drop-shadow(0 0 20px rgba(255, 120, 40, .6));
   }
   .stage .halo {
     position: absolute; inset: 8%; border-radius: 50%;
-    background: radial-gradient(closest-side, rgba(255, 110, 40, .55), rgba(255, 110, 40, .18) 60%, transparent);
+    background: radial-gradient(closest-side, rgba(255, 110, 40, .5), rgba(255, 110, 40, .15) 60%, transparent);
     filter: blur(30px);
-    opacity: var(--heat); transition: opacity 1.2s ease;
-    animation: pulse 3.6s ease-in-out infinite;
+    opacity: .5;
   }
-  .stage.flash .ring-img { filter: brightness(1.45) drop-shadow(0 0 50px rgba(255, 150, 60, .9)); }
-  .stage.cold .ring-img { filter: brightness(.5) saturate(.6); animation: quiver .45s ease-in-out; }
-  .stage.blaze .turn { transition-duration: 3s; }
-  .stage.blaze .ring-img { filter: brightness(1.15) drop-shadow(0 0 60px rgba(255, 130, 50, .8)); }
-  .stage.blaze .halo { animation-duration: 1.4s; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { 50% { opacity: calc(var(--heat) * .5); } }
   @keyframes float {
     0%, 100% { transform: perspective(1000px) translateY(0) rotateX(0) rotateY(0); }
     33% { transform: perspective(1000px) translateY(-16px) rotateX(8deg) rotateY(-10deg); }
     66% { transform: perspective(1000px) translateY(-6px) rotateX(-6deg) rotateY(8deg); }
   }
-  @keyframes quiver { 25% { translate: -8px 0; } 75% { translate: 8px 0; } }
   #s-start { padding-top: 12vh; }
 
   label { display: block; font-family: var(--display); font-size: 18px; color: var(--muted); margin-bottom: 8px; }
@@ -185,10 +172,8 @@
 <body data-screen="s-start">
 <div class="stage" id="stage" aria-hidden="true">
   <div class="float">
-    <div class="turn">
-      <div class="halo"></div>
-      <img class="ring-img" src="ring.webp" alt="" width="900" height="844" decoding="async">
-    </div>
+    <div class="halo"></div>
+    <img class="ring-img" src="ring.webp" alt="" width="900" height="844" decoding="async">
   </div>
 </div>
 <main class="wrap">
@@ -300,22 +285,6 @@ const $ = id => document.getElementById(id);
 const LETTERS = ['А', 'Б', 'В', 'Г'];
 let order = [], i = 0, score = 0, player = '', lastId = null;
 
-/* ---- Кольцо ---- */
-const stage = $('stage');
-let turn = 0;
-function ring({ step = 0, heat, mood } = {}) {
-  turn += step;
-  stage.style.setProperty('--turn', turn + 'deg');
-  if (heat !== undefined) stage.style.setProperty('--heat', heat);
-  if (mood) {
-    stage.classList.remove('flash', 'cold');
-    void stage.offsetWidth; // перезапуск анимации, если класс тот же
-    stage.classList.add(mood);
-    clearTimeout(ring.t);
-    ring.t = setTimeout(() => stage.classList.remove(mood), 900);
-  }
-}
-
 function show(id) {
   document.body.dataset.screen = id;
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
@@ -328,15 +297,13 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 $('name').addEventListener('input', e => { $('go').disabled = !e.target.value.trim(); });
 $('name').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) start(); });
 $('go').onclick = start;
-$('again').onclick = () => { stage.classList.remove('blaze'); ring({ heat: .25 }); show('s-start'); };
+$('again').onclick = () => show('s-start');
 $('next').onclick = () => { i++; i < order.length ? ask() : finish(); };
 
 function start() {
   player = $('name').value.trim().slice(0, 30);
   order = shuffle(QUESTIONS);
   i = 0; score = 0;
-  stage.classList.remove('blaze');
-  ring({ heat: .2 });
   $('qt').textContent = order.length;
   show('s-quiz');
   ask();
@@ -371,7 +338,6 @@ function pick(btn) {
   });
   const ok = !!btn.dataset.right;
   if (ok) { score++; sparks(14); } else btn.classList.add('wrong');
-  ring({ step: 360 / order.length, heat: .2 + .8 * (i + 1) / order.length, mood: ok ? 'flash' : 'cold' });
   $('sc').textContent = score;
   $('bar').style.width = ((i + 1) / order.length * 100) + '%';
   $('fact').textContent = (ok ? 'Верно! ' : 'Увы. ') + order[i].fact;
@@ -388,13 +354,7 @@ function finish() {
   $('rank').textContent = r.title;
   $('rank-text').textContent = r.text;
   show('s-end');
-  if (score >= total * .7) {
-    sparks(70);
-    stage.classList.add('blaze');
-    ring({ step: 720, heat: 1, mood: 'flash' });
-  } else {
-    ring({ heat: .2 + .6 * score / total });
-  }
+  if (score >= total * .7) sparks(70);
   save({ name: player, score, total, rank: r.title, date: new Date().toISOString() });
 }
 
