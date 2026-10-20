@@ -59,7 +59,7 @@
   @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
   /* Кольцо Всевластия на фоне.
-     --turn поворачивает кольцо с каждым вопросом, --heat разжигает надпись по мере прохождения. */
+     --turn поворачивает кольцо с каждым вопросом, --heat разжигает его свечение по мере прохождения. */
   .stage {
     --turn: 0deg; --heat: .25;
     position: fixed; inset: 0; z-index: -1; pointer-events: none;
@@ -68,24 +68,36 @@
   }
   body[data-screen="s-quiz"] .stage { opacity: .5; }
   body[data-screen="s-board"] .stage { opacity: .35; }
-  .stage .float { position: absolute; left: 50%; top: 50%; translate: -50% -50%; animation: float 8s ease-in-out infinite; }
-  .stage svg { display: block; width: min(118vw, 780px); height: auto; overflow: visible; transition: filter .6s ease; }
-  .stage .turn { transform-origin: 200px 200px; transform: rotate(var(--turn)); transition: transform 1.4s cubic-bezier(.2, .8, .2, 1); }
-  .stage .script { transform-origin: 200px 200px; animation: spin 90s linear infinite; }
-  .stage .script text { opacity: calc(.15 + var(--heat) * .85); transition: opacity 1.2s ease; }
-  .stage .halo { opacity: var(--heat); transition: opacity 1.2s ease; }
-  .stage .halo circle { animation: pulse 3.6s ease-in-out infinite; }
-  .stage.flash svg { filter: brightness(1.5) drop-shadow(0 0 40px rgba(255, 150, 60, .7)); }
-  .stage.flash .halo { animation: flare .9s ease-out; }
-  .stage.cold svg { filter: brightness(.55) saturate(.6); }
-  .stage.cold svg { animation: quiver .45s ease-in-out; }
+  .stage .float {
+    position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+    width: min(112vw, 760px);
+    animation: float 9s ease-in-out infinite;
+  }
+  .stage .turn { position: relative; transform: rotate(var(--turn)); transition: transform 1.4s cubic-bezier(.2, .8, .2, 1); }
+  .stage .ring-img {
+    position: relative; display: block; width: 100%; height: auto;
+    filter: brightness(calc(.7 + var(--heat) * .4)) drop-shadow(0 0 calc(var(--heat) * 36px) rgba(255, 120, 40, .75));
+    transition: filter .8s ease;
+  }
+  .stage .halo {
+    position: absolute; inset: 8%; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 110, 40, .55), rgba(255, 110, 40, .18) 60%, transparent);
+    filter: blur(30px);
+    opacity: var(--heat); transition: opacity 1.2s ease;
+    animation: pulse 3.6s ease-in-out infinite;
+  }
+  .stage.flash .ring-img { filter: brightness(1.45) drop-shadow(0 0 50px rgba(255, 150, 60, .9)); }
+  .stage.cold .ring-img { filter: brightness(.5) saturate(.6); animation: quiver .45s ease-in-out; }
   .stage.blaze .turn { transition-duration: 3s; }
-  .stage.blaze .script { animation-duration: 14s; }
-  .stage.blaze svg { filter: drop-shadow(0 0 60px rgba(255, 130, 50, .55)); }
+  .stage.blaze .ring-img { filter: brightness(1.15) drop-shadow(0 0 60px rgba(255, 130, 50, .8)); }
+  .stage.blaze .halo { animation-duration: 1.4s; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { 50% { opacity: .45; } }
-  @keyframes flare { 0% { opacity: 1; } 100% { opacity: var(--heat); } }
-  @keyframes float { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-18px) rotate(-1.5deg); } }
+  @keyframes pulse { 50% { opacity: calc(var(--heat) * .5); } }
+  @keyframes float {
+    0%, 100% { transform: perspective(1000px) translateY(0) rotateX(0) rotateY(0); }
+    33% { transform: perspective(1000px) translateY(-16px) rotateX(8deg) rotateY(-10deg); }
+    66% { transform: perspective(1000px) translateY(-6px) rotateX(-6deg) rotateY(8deg); }
+  }
   @keyframes quiver { 25% { translate: -8px 0; } 75% { translate: 8px 0; } }
   #s-start { padding-top: 12vh; }
 
@@ -173,48 +185,10 @@
 <body data-screen="s-start">
 <div class="stage" id="stage" aria-hidden="true">
   <div class="float">
-    <svg viewBox="0 0 400 400">
-      <defs>
-        <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#fff3c4"/>
-          <stop offset=".3" stop-color="#f0c75e"/>
-          <stop offset=".6" stop-color="#b8862a"/>
-          <stop offset=".8" stop-color="#e9bb4f"/>
-          <stop offset="1" stop-color="#6e4810"/>
-        </linearGradient>
-        <linearGradient id="shade" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stop-color="#000" stop-opacity=".55"/>
-          <stop offset=".5" stop-color="#000" stop-opacity="0"/>
-          <stop offset="1" stop-color="#fff" stop-opacity=".18"/>
-        </linearGradient>
-        <filter id="blur-lg" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
-        <filter id="blur-sm" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter>
-        <filter id="fire" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2.4" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        <path id="script-path" d="M200,200 m-131,0 a131,131 0 1,1 262,0 a131,131 0 1,1 -262,0"/>
-      </defs>
-
-      <g class="halo"><circle cx="200" cy="200" r="140" fill="none" stroke="#ff6a2a" stroke-width="44" filter="url(#blur-lg)"/></g>
-
-      <g class="turn">
-        <circle cx="200" cy="200" r="140" fill="none" stroke="#3a2608" stroke-width="40"/>
-        <circle cx="200" cy="200" r="140" fill="none" stroke="url(#gold)" stroke-width="36"/>
-        <circle cx="200" cy="200" r="140" fill="none" stroke="url(#shade)" stroke-width="36"/>
-        <circle cx="200" cy="200" r="158" fill="none" stroke="#fff3c4" stroke-width="1.5" opacity=".55"/>
-        <circle cx="200" cy="200" r="122" fill="none" stroke="#5a3a0c" stroke-width="2" opacity=".8"/>
-        <g class="script">
-          <text font-family="Georgia, serif" font-size="17" letter-spacing="3" fill="#ffb347" filter="url(#fire)">
-            <textPath href="#script-path">ᚨᛋ ᚾᚨᛉᚷ ᛞᚢᚱᛒᚨᛏᚢᛚᚢᚴ · ᚨᛋ ᚾᚨᛉᚷ ᚷᛁᛗᛒᚨᛏᚢᛚ · ᚨᛋ ᚾᚨᛉᚷ ᚦᚱᚨᚴᚨᛏᚢᛚᚢᚴ · ᚨᚷᚺ ᛒᚢᚱᛉᚢᛗ-ᛁᛋᚺᛁ ᚲᚱᛁᛗᛈᚨᛏᚢᛚ ·</textPath>
-          </text>
-        </g>
-      </g>
-
-      <!-- блик не крутится вместе с кольцом: свет падает с одной стороны -->
-      <path d="M86,118 A140,140 0 0 1 150,72" fill="none" stroke="#fffbe6" stroke-width="7" stroke-linecap="round" opacity=".7" filter="url(#blur-sm)"/>
-      <path d="M318,290 A140,140 0 0 1 280,318" fill="none" stroke="#fffbe6" stroke-width="4" stroke-linecap="round" opacity=".35" filter="url(#blur-sm)"/>
-    </svg>
+    <div class="turn">
+      <div class="halo"></div>
+      <img class="ring-img" src="ring.webp" alt="" width="900" height="844" decoding="async">
+    </div>
   </div>
 </div>
 <main class="wrap">
