@@ -42,10 +42,12 @@
   }
   .wrap { max-width: 680px; margin: 0 auto; padding: 32px 16px 64px; }
   h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: .02em; margin: 0; }
-  h1 { font-size: clamp(34px, 8vw, 54px); line-height: 1.05; text-align: center; color: var(--gold); text-shadow: 0 0 24px rgba(224, 180, 76, .35); }
-  .sub { text-align: center; color: var(--muted); font-style: italic; margin: 10px 0 0; }
+  h1 { font-size: clamp(34px, 8vw, 54px); line-height: 1.05; text-align: center; color: var(--gold); text-shadow: 0 2px 4px rgba(0, 0, 0, .9), 0 0 28px rgba(0, 0, 0, .9), 0 0 24px rgba(224, 180, 76, .35); }
+  .sub { text-align: center; color: var(--muted); font-style: italic; margin: 10px 0 0; text-shadow: 0 1px 3px #000, 0 0 16px rgba(0, 0, 0, .95); }
   .card {
-    background: linear-gradient(180deg, var(--surface-2), var(--surface));
+    background: linear-gradient(180deg, rgba(33, 27, 18, .82), rgba(23, 19, 13, .86));
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     border: 1px solid var(--line);
     border-radius: 18px;
     padding: 24px 20px;
@@ -56,12 +58,48 @@
   .screen.on { display: block; }
   @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
-  /* Кольцо */
-  .ring { display: block; width: 168px; height: 168px; margin: 8px auto 18px; }
-  .ring .band { animation: spin 26s linear infinite; transform-origin: 50% 50%; }
-  .ring .glow { animation: pulse 3.2s ease-in-out infinite; }
+  /* Кольцо Всевластия на фоне.
+     --turn поворачивает кольцо с каждым вопросом, --heat разжигает его свечение по мере прохождения. */
+  .stage {
+    --turn: 0deg; --heat: .25;
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    overflow: hidden;
+    opacity: .9; transition: opacity 1s ease;
+  }
+  body[data-screen="s-quiz"] .stage { opacity: .5; }
+  body[data-screen="s-board"] .stage { opacity: .35; }
+  .stage .float {
+    position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+    width: min(112vw, 760px);
+    animation: float 9s ease-in-out infinite;
+  }
+  .stage .turn { position: relative; transform: rotate(var(--turn)); transition: transform 1.4s cubic-bezier(.2, .8, .2, 1); }
+  .stage .ring-img {
+    position: relative; display: block; width: 100%; height: auto;
+    filter: brightness(calc(.7 + var(--heat) * .4)) drop-shadow(0 0 calc(var(--heat) * 36px) rgba(255, 120, 40, .75));
+    transition: filter .8s ease;
+  }
+  .stage .halo {
+    position: absolute; inset: 8%; border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(255, 110, 40, .55), rgba(255, 110, 40, .18) 60%, transparent);
+    filter: blur(30px);
+    opacity: var(--heat); transition: opacity 1.2s ease;
+    animation: pulse 3.6s ease-in-out infinite;
+  }
+  .stage.flash .ring-img { filter: brightness(1.45) drop-shadow(0 0 50px rgba(255, 150, 60, .9)); }
+  .stage.cold .ring-img { filter: brightness(.5) saturate(.6); animation: quiver .45s ease-in-out; }
+  .stage.blaze .turn { transition-duration: 3s; }
+  .stage.blaze .ring-img { filter: brightness(1.15) drop-shadow(0 0 60px rgba(255, 130, 50, .8)); }
+  .stage.blaze .halo { animation-duration: 1.4s; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes pulse { 50% { opacity: .35; } }
+  @keyframes pulse { 50% { opacity: calc(var(--heat) * .5); } }
+  @keyframes float {
+    0%, 100% { transform: perspective(1000px) translateY(0) rotateX(0) rotateY(0); }
+    33% { transform: perspective(1000px) translateY(-16px) rotateX(8deg) rotateY(-10deg); }
+    66% { transform: perspective(1000px) translateY(-6px) rotateX(-6deg) rotateY(8deg); }
+  }
+  @keyframes quiver { 25% { translate: -8px 0; } 75% { translate: 8px 0; } }
+  #s-start { padding-top: 12vh; }
 
   label { display: block; font-family: var(--display); font-size: 18px; color: var(--muted); margin-bottom: 8px; }
   input[type=text] {
@@ -144,26 +182,19 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } .spark { display: none; } }
 </style>
 </head>
-<body>
+<body data-screen="s-start">
+<div class="stage" id="stage" aria-hidden="true">
+  <div class="float">
+    <div class="turn">
+      <div class="halo"></div>
+      <img class="ring-img" src="ring.webp" alt="" width="900" height="844" decoding="async">
+    </div>
+  </div>
+</div>
 <main class="wrap">
 
   <!-- Старт -->
   <section class="screen on" id="s-start">
-    <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#fff0b8"/><stop offset=".45" stop-color="#e0b44c"/><stop offset="1" stop-color="#8a5e17"/>
-        </linearGradient>
-        <path id="arc" d="M100,100 m-62,0 a62,62 0 1,1 124,0 a62,62 0 1,1 -124,0"/>
-      </defs>
-      <circle class="glow" cx="100" cy="100" r="80" fill="none" stroke="#ff7a3c" stroke-width="10" opacity=".7" style="filter: blur(8px)"/>
-      <circle cx="100" cy="100" r="70" fill="none" stroke="url(#g)" stroke-width="16"/>
-      <g class="band">
-        <text font-family="Georgia, serif" font-size="11" fill="#ff8a4a" letter-spacing="2.5">
-          <textPath href="#arc">ᚨᛋ ᚾᚨᛉᚷ ᛞᚢᚱᛒᚨᛏᚢᛚᚢᚴ · ᚨᛋ ᚾᚨᛉᚷ ᚷᛁᛗᛒᚨᛏᚢᛚ · ᚨᛋ ᚾᚨᛉᚷ ᚦᚱᚨᚴᚨᛏᚢᛚᚢᚴ ·</textPath>
-        </text>
-      </g>
-    </svg>
     <h1>Тест Средиземья</h1>
     <p class="sub">Двенадцать вопросов о «Властелине колец». Достоин ли ты войти в Братство?</p>
 
@@ -269,7 +300,24 @@ const $ = id => document.getElementById(id);
 const LETTERS = ['А', 'Б', 'В', 'Г'];
 let order = [], i = 0, score = 0, player = '', lastId = null;
 
+/* ---- Кольцо ---- */
+const stage = $('stage');
+let turn = 0;
+function ring({ step = 0, heat, mood } = {}) {
+  turn += step;
+  stage.style.setProperty('--turn', turn + 'deg');
+  if (heat !== undefined) stage.style.setProperty('--heat', heat);
+  if (mood) {
+    stage.classList.remove('flash', 'cold');
+    void stage.offsetWidth; // перезапуск анимации, если класс тот же
+    stage.classList.add(mood);
+    clearTimeout(ring.t);
+    ring.t = setTimeout(() => stage.classList.remove(mood), 900);
+  }
+}
+
 function show(id) {
+  document.body.dataset.screen = id;
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -280,13 +328,15 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 $('name').addEventListener('input', e => { $('go').disabled = !e.target.value.trim(); });
 $('name').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.value.trim()) start(); });
 $('go').onclick = start;
-$('again').onclick = () => show('s-start');
+$('again').onclick = () => { stage.classList.remove('blaze'); ring({ heat: .25 }); show('s-start'); };
 $('next').onclick = () => { i++; i < order.length ? ask() : finish(); };
 
 function start() {
   player = $('name').value.trim().slice(0, 30);
   order = shuffle(QUESTIONS);
   i = 0; score = 0;
+  stage.classList.remove('blaze');
+  ring({ heat: .2 });
   $('qt').textContent = order.length;
   show('s-quiz');
   ask();
@@ -321,6 +371,7 @@ function pick(btn) {
   });
   const ok = !!btn.dataset.right;
   if (ok) { score++; sparks(14); } else btn.classList.add('wrong');
+  ring({ step: 360 / order.length, heat: .2 + .8 * (i + 1) / order.length, mood: ok ? 'flash' : 'cold' });
   $('sc').textContent = score;
   $('bar').style.width = ((i + 1) / order.length * 100) + '%';
   $('fact').textContent = (ok ? 'Верно! ' : 'Увы. ') + order[i].fact;
@@ -337,7 +388,13 @@ function finish() {
   $('rank').textContent = r.title;
   $('rank-text').textContent = r.text;
   show('s-end');
-  if (score >= total * .7) sparks(70);
+  if (score >= total * .7) {
+    sparks(70);
+    stage.classList.add('blaze');
+    ring({ step: 720, heat: 1, mood: 'flash' });
+  } else {
+    ring({ heat: .2 + .6 * score / total });
+  }
   save({ name: player, score, total, rank: r.title, date: new Date().toISOString() });
 }
 
